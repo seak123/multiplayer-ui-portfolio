@@ -1,0 +1,63 @@
+# Guided code tour
+
+[Overview](../README.md) · [Architecture](ARCHITECTURE.md) · [Widget contracts](DEPENDENCIES.md)
+
+The paths preserve the split between native source and Lua content. Follow a complete flow first, then inspect individual methods. `-- Implementation omitted.` marks an out-of-scope body, not working game behaviour. The test harness rejects calls into these placeholders.
+
+## 1. Shared state → two presentations
+
+Start at [TeamModel.lua](../Content/Lua/GameLogics/Team/TeamModel.lua).
+
+- `OnTeamFullDataSync` reads native IDs/target, updates presentation and requests richer player details.
+- `IsMatching` combines local team stage with the native matching manager's active queue.
+- `UpdateTeamFrameViewState` derives `HUDState`, then coordinates the panel/notice against map visibility and current team state.
+- `OpenTeamMatchingFrame` resolves an asynchronously created frame to its Lua behaviour and initialises it.
+- `HideTeamMatchingFrame` and `RecoverTeamPanel` change presentation; they do not substitute for a leave/cancel service request.
+
+[TeamTypes.lua](../Content/Lua/GameLogics/Team/TeamTypes.lua) contains the state/config mapping and invitation-source adapters. This keeps common state presentation data together while allowing each view to handle its own layout.
+
+## 2. Full panel → player intent
+
+In [TeamMatchingMainFrame.lua](../Content/Lua/GameLogics/Team/TeamMatching/TeamMatchingMainFrame.lua):
+
+- `InitFrameContent` configures invitation sources and initial content.
+- `UpdateInviteList` converts the active source's entries into native list data via `DataObjectPool:Get`.
+- `UpdateFrameContent` reads native team members and role; `UpdateFrameBtns` chooses available actions and text.
+- `OnMatchingPlayer`, `OnStartTarget` and `OnLeavingTeam` distinguish matching, ready state, leader actions and explicit exit intent.
+- `OnCloseFrame` minimises the ordinary team flow, with a special non-matching single-player PvP branch.
+
+The [invitation row](../Content/Lua/GameLogics/Team/TeamMatching/TeamInvitePlayerItem.lua) maps player identity and native invite cooldown to per-row controls. The [member row](../Content/Lua/GameLogics/Team/TeamMatching/TeamMemberItem.lua) displays member/leader/readiness/confirmation state. These are distinct row roles, not one generic item with every responsibility.
+
+## 3. Compact status → restore or explicit exit
+
+In [TeamMatchingNotice.lua](../Content/Lua/GameLogics/Team/TeamMatching/TeamMatchingNotice.lua), inspect `UpdateState`, `OnClickNoticeBtn` and `OnClose`. `OnMatchNoticeTimerUpdate` formats elapsed native matching time; it does not maintain a separate elapsed counter.
+
+[MatchingPrepareFrame.lua](../Content/Lua/GameLogics/Team/TeamMatching/MatchingPrepareFrame.lua) covers the confirmation stage, member agreement count and deadline. `OnTeamBCDismiss` / `OnTeamBCLeave` close that flow. Do not infer an entire server-side matching algorithm from this view code.
+
+## 4. A world interaction → support UI
+
+[PzBossAssistCallFuncObject.cpp](../Source/ProjectZ/GameLogic/BossAltar/NpcFunc/PzBossAssistCallFuncObject.cpp) emits `OnRequestOpenAssistPanel` with the configured `AssistId`.
+
+In [MultiPlayerModel.lua](../Content/Lua/GameLogics/MultiPlayer/MultiPlayerModel.lua), `OnRequestOpenAssistPanel` calls `RequestAssist`, which reads support configuration and opens the multiplayer parent in support mode.
+
+[MultiPlayerPanel.lua](../Content/Lua/GameLogics/MultiPlayer/MultiPlayerPanel.lua) keeps this context in `bFromAssist`. `OnMyShowPanel` and `ShowTab` connect it to the player-list child.
+
+## 5. Query → list data → action state
+
+[MultiPlayerWorldListPanel.lua](../Content/Lua/GameLogics/MultiPlayer/MultiPlayerWorldListPanel.lua): `UpdateDataByReqServer` / `ReqServerData` choose normal browsing versus support recommendations. Search, loading and response handlers live here. Inspect `OnInputTextChanged` for the later scoped debounce, as part of the shared browsing implementation.
+
+[MultiPlayerWorldList.lua](../Content/Lua/GameLogics/MultiPlayer/MultiPlayerWorldList.lua): `CreatePlayerWorldItemData` constructs view data; `FillWorldList` maps records and uses the existing list API. It also groups signature/tag queries. Performance gains are not quantified in this case.
+
+[MultiPlayerWorldItem.lua](../Content/Lua/GameLogics/MultiPlayer/MultiPlayerWorldItem.lua): `RefreshAssistGroup` selects the support presentation and requests details; `RefreshAssistState` chooses the individual action state; `OnRequestAssist` dispatches intent. `OnInviteAssistRefresh` recalculates state following a native notification. See [DEBUGGING.md](DEBUGGING.md) before assuming every asynchronous edge case is protected.
+
+## 6. Lua → native service boundary
+
+[PzTeamFunctionLibrary.cpp](../Source/ProjectZ/GameLogic/Team/PzTeamFunctionLibrary.cpp) preserves the thin team command/query bridge. [PzTeamManager.cpp](../Source/ProjectZ/GameLogic/Team/PzTeamManager.cpp) shows selected data/readiness queries and the urge-ready cooldown.
+
+[PzMultiPlayerManager.cpp](../Source/ProjectZ/GameLogic/MultiPlayer/PzMultiPlayerManager.cpp) shows support request dispatch, per-player pending timers, expiration and refresh notification. Inspect `IsAssistPlayerValid`: in this code it means “not present in the pending map”, not “all server gameplay rules have passed”.
+
+The adjacent headers keep selected signatures readable. They are explicitly labelled outlines; original engine types and generated service dependencies are external.
+
+## 7. Implementation map and validation
+
+[source-manifest.json](source-manifest.json) maps file paths to included methods and omitted bodies. Its checksums validate the displayed files only; no project revision identifiers are published. [TESTING.md](TESTING.md) explains which methods execute in the focused harness and what still needs the actual game/editor.
