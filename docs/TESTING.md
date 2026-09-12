@@ -1,6 +1,6 @@
 # Verification and remaining validation
 
-Second-edition verification on 11 September 2026: **17 tests run — 16 passed, 1 expected failure** documenting the cache-miss assumption below. The suite includes the 64-case team presentation matrix. No unexpected failures remained. This is a local test result, not CI, in-engine or device validation.
+Reverified on 13 September 2026: **17 tests run — 16 passed, 1 expected failure** documenting the cache-miss assumption below. The suite includes the 64-case team presentation matrix. No unexpected failures remained. This is a local test result, not CI, in-engine or device validation.
 
 ## Run the focused tests
 

@@ -6,7 +6,9 @@
 
 ProjectZ is a multiplayer game built on a modified Unreal codebase. Players need to find teammates, choose activities, prepare, match and request help without losing awareness of the world around them. The work crossed existing C++ gameplay services, Lua interface logic and UMG widgets.
 
-My contribution was feature implementation and maintenance across those layers. The work connected contextual support interactions and a minimised team HUD. Later changes addressed support-search behaviour and stale player-availability presentation. These were extensions within an existing multiplayer and UI architecture, not a greenfield UI framework.
+I developed and maintained the gameplay features and their associated interfaces across those layers. This included team/support integration, compact team status and the right-side party HUD shown in the gallery. Follow-up work addressed support-search behaviour and stale player availability, using the team's existing multiplayer services and shared UI framework.
+
+The three decisions below connect that responsibility to concrete behaviour: keep shared state across views; reuse discovery with an explicit support context; and separate data requests from presentation refresh.
 
 ## The problem was the flow, not just the screen
 
@@ -20,7 +22,7 @@ Several facts determine what the player should see:
 
 A single button label cannot be updated correctly in isolation from these facts. Likewise, closing a menu must not accidentally mean “leave the team”. The implementation separates presentation changes from explicit multiplayer commands.
 
-## Flow A — create a team, minimise, restore
+## Flow A: create a team, minimise, restore
 
 `TeamMatchingForInstance(targetId)` uses the existing native team API to create or change the activity target, or restores the panel for an existing team. Native data-sync events update `TeamModel`. The full panel draws members, readiness and available actions from that state.
 
@@ -32,9 +34,9 @@ The notice displays a localised activity/state label, an asynchronously loaded i
 
 ### Why this decision mattered
 
-The value is continuity: players can return to gameplay while retaining status and a route back to the controls. Keeping common state derivation in the model also gives engineers a focal point when the HUD and full view disagree. The views still contain mode-specific presentation logic; this is a practical model-view design, not a claim of perfectly pure MVVM.
+The delivered behaviour preserves continuity: players can return to gameplay while retaining status and a route back to controls. Common state derivation gives engineers a focal point when the compact notice and full view disagree. The trade-off is that each view still handles mode-specific presentation, so shared model state alone does not remove the need to test both views.
 
-## Flow B — request support from a gameplay context
+## Flow B: request support from a gameplay context
 
 A native NPC interaction calls `ExecuteNpcFunc_Implementation`. After validating the actor, it emits `OnRequestOpenAssistPanel` with an `AssistId`. `MultiPlayerModel` retains that context, consults support configuration and opens the existing multiplayer panel in support mode.
 
@@ -44,7 +46,7 @@ Clicking an eligible support action eventually calls:
 
 `RequestAssistPlayer(OwnerRID, AssistId)` → native manager → multiplayer component request.
 
-The manager owns the per-player invitation timer and emits `OnInviteAssistRefresh` after inserting or clearing pending entries. Items read that status rather than maintaining independent authoritative invitation timers. An RPC request is not treated as proof that the other player accepted.
+The manager owns the per-player invitation timer and emits `OnInviteAssistRefresh` after inserting or clearing pending entries. Items read that status rather than maintaining independent authoritative invitation timers. Pending invitation feedback remains distinct from acceptance.
 
 ### Reuse with a visible cost
 
@@ -54,7 +56,7 @@ Reusing browsing, player information and list presentation avoided building anot
 
 The existing framework let UMG authoring and Lua behaviour remain connected by named widgets, element bindings and child behaviours. This matters in cross-discipline work: designers need to iterate on flow and rules; UI artists need to author layout, animation and feedback; engineers need stable bindings and clear state ownership.
 
-I used these existing facilities in feature delivery and discussed UI solutions with the team. A useful review conversation is concrete: what should remain visible after minimising; what does “waiting” mean; which player action needs confirmation; which event changes a control; and what should the interface display while detail data is missing? Those questions connect user flow to an implementable contract within the existing authoring workflow.
+I used these facilities in feature delivery and discussed UI solutions with the team. The implementation makes the cross-discipline contract concrete: what remains visible after minimising, which actions are role-dependent, how waiting and unavailable states differ, and which events update the view. Designers can iterate on the flow, UI artists on the presentation, and engineers on the state and command boundaries without replacing the authoring workflow.
 
 ## Maintenance after delivery
 
@@ -64,8 +66,8 @@ The historical change removed the duplicate/re-entrant path and left a completio
 
 Other maintenance changes routed invitation refresh back through the complete availability calculation and updated lists after player details arrived. These reinforce the same design rule: update the meaningful player state, not just whichever button happened to change last.
 
-## Outcome and limits
+## Outcome
 
-The implementation connected team controls, compact status and contextual support to existing gameplay services while keeping the existing UI authoring workflow. The case documents the implementation and its maintenance through selected code and work records. No measured conversion-rate, frame-time or bug-count improvement is reported.
+The work delivered team controls, compact status and contextual support on top of existing gameplay services. Players could minimise and restore the team interface, use discovery tools for support, and receive state-dependent invitation feedback. Maintenance removed the demonstrated request/completion cycle and restored complete availability refresh for affected rows.
 
-The strongest evidence here is inspectable behaviour: role-dependent controls, shared status derivation, contextual reuse, native request ownership and a concrete feedback-loop fix. The [four gameplay screenshots](../README.md#gameplay-footage-and-screenshots) now provide visual context for team setup, the party HUD, support selection and the compact team-status notice. They do not demonstrate transition timing or a continuous user flow.
+These are observable behavioural outcomes. The [screenshots](../README.md#gameplay-footage-and-screenshots) show the interfaces; the [debugging chapter](DEBUGGING.md) and [tests](TESTING.md) make the implementation and regression boundaries inspectable. Measurement and runtime limits are recorded in the verification chapter.
