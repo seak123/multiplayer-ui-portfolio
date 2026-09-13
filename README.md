@@ -1,97 +1,88 @@
 # Multiplayer UI: from finding teammates to playing together
 
-**Evan (Yaxin) Ge · Lua / C++ / UMG · Past ProjectZ development work**
+![Team setup with member slots and a player-invitation browser.](media/screenshots/Team_MainUI.png)
 
-Team setup, invitations, readiness, matching and support requests form one connected player experience across menus and gameplay. The challenge was keeping several views aligned with live multiplayer state.
+Team setup, invitations, matching and support connect across menus and gameplay, with several views kept aligned to live multiplayer state.
 
-I developed and maintained gameplay features and their associated UI, including team/support integration, compact status and follow-up fixes. I also implemented the right-side party HUD shown below. The work used the team's shared Lua/UMG framework and existing multiplayer services.
+**Evan (Yaxin) Ge · Lua / C++ / UMG · ProjectZ**
 
-[中文 README](docs/README.zh-CN.md) · [Case study](docs/CASE_STUDY.md) · [Decisions](docs/DECISIONS.md) · [Code tour](docs/CODE_TOUR.md) · [Architecture](docs/ARCHITECTURE.md) · [Visuals](media/SCREENSHOTS.md) · [Verification](docs/TESTING.md)
+[中文 README](docs/README.zh-CN.md) · [Screenshots](#gameplay-footage-and-screenshots) · [Explore the work](#deeper-reading)
 
-## How to read this case
+*Team setup: member slots, leader status and invitation sources share one panel. **Minimise** returns to gameplay without leaving the team. The displayed action is **Waiting to start**. [Footage credit and English label guide](media/SCREENSHOTS.md).*
 
-This is a retrospective of specific work on ProjectZ, not a proposal for a new feature. The account follows actual implementation behaviour and verified interface relationships. Selected code excerpts retain module paths and calling relationships; omitted bodies and shortened interface outlines are labelled.
+## My work
 
-Separately written reference models and tests are supporting material, not original game code or historical validation results. Documentation is in English, with one Chinese README. The [decision rationale](docs/DECISIONS.md) combines my account of the work with the implementation boundaries visible in the code.
+I developed and maintained team and support gameplay with its associated UI, including the main-panel integration, compact team-status notice, right-side party HUD and follow-up fixes. The work connects Lua/UMG presentation to C++ systems and multiplayer services.
 
-## Four engineering decisions
+My focus was continuity across views, contextual invitations, asynchronous correctness and the cost of refreshing live data.
 
-**1. Adapt different matching systems into one UI-facing model.**
+## Three questions and decisions
 
-The feature grew from arena matchmaking into PvE teams with different protocols and stage definitions. I worked on a common model boundary so views could use consistent team state while requests still reached the appropriate service. `TeamModel` retains explicit mode branches; it is an incremental integration, not a replacement backend. The full panel and compact HUD then derive their presentation from this shared state. [Reasoning and code](docs/DECISIONS.md#1-one-ui-facing-model-over-different-matching-systems) · [Team flow](docs/CASE_STUDY.md#flow-a-create-a-team-minimise-restore).
+### 1. How can different matching systems present one coherent team state?
 
-**2. Reuse player discovery, but preserve the meaning of the action.**
+Arena and PvE matching used different protocols, stages and team records. I introduced a common UI-facing model boundary to translate those inputs into shared team state, while matching and cancellation retained mode-specific service dispatch.
 
-A world interaction carries an `AssistId` into the existing multiplayer browser. Lists and search are reused; support actions retain their context and distinguish offline, busy and pending players. Invitation state belongs to the native manager, not individual rows. The trade-off is context branching across layers. [Support flow](docs/CASE_STUDY.md#flow-b-request-support-from-a-gameplay-context).
+The full panel and compact HUD derive their presentation from that shared state. Hiding or restoring a view is separate from leaving a team or cancelling a match. [Decision rationale](docs/DECISIONS.md#1-one-ui-facing-model-over-different-matching-systems) · [Panel and HUD flow](docs/CASE_STUDY.md#flow-a-create-a-team-minimise-restore).
 
-**3. Diagnose UI failures through the complete data path.**
+### 2. How can support reuse player discovery without losing its purpose?
 
-A support-search freeze involved a detail request whose completion triggered another request. A duplicate Lua method definition hid the effective callback. The historical fix removed that cycle; the included before/after test demonstrates terminating refresh behaviour. [Fix and regression evidence](docs/DEBUGGING.md).
+I carried the activity's support context into the existing multiplayer browser, reusing search, lists and player details. Row actions retain the support ID and distinguish offline, busy and pending players; the native manager maintains invitation waiting and cooldown state.
 
-**4. Reduce redundant roster work without sacrificing data freshness.**
+The same discovery UI can therefore support a different player intent without treating a sent request as an accepted invitation. [Support flow](docs/CASE_STUDY.md#flow-b-request-support-from-a-gameplay-context).
 
-An iOS performance issue exposed repeated native-to-Lua roster refreshes, list repopulation and detail queries. I gated membership notifications and separated support-context updates. Detail-query policy then evolved: cache-permitted binding reduced repeat work, but later level-display problems required periodic forced refreshes and forced queries on binding. The lesson is to distinguish structural changes from live values and profile freshness—not simply refresh everything less often. [Optimisation, trade-offs and executable checks](docs/HUD_PERFORMANCE.md).
+### 3. Which data needs refreshing, and when?
 
-Together, these decisions connect player-facing continuity, practical reuse, asynchronous correctness and logic-layer UI performance.
+An iOS performance issue led me through native roster notifications, Lua list repopulation, item binding and detail queries. I gated structural notifications with a dirty flag and separated support-context updates from member-list refreshes.
 
-A related [data-freshness decision](docs/DECISIONS.md#2-immediate-feedback-is-not-authoritative-eligibility) explains the tension between immediate client feedback and cached player eligibility. It distinguishes my account of the later interaction policy from the request paths retained in this export.
+Profile data needed a different policy: cache-permitted binding reduced repeated work, while later level-display maintenance restored explicit freshness through periodic forced queries and queries on binding. I treated roster structure, live combat values and richer player details as different update responsibilities. [HUD optimisation and maintenance](docs/HUD_PERFORMANCE.md).
 
-## The player experience
+## Outcomes
 
-```mermaid
-flowchart TB
-    A["Choose activity<br/>or request help"] --> B[Find and invite players]
-    B --> C["Team readiness<br/>and matching"]
-    C --> D["Minimise to HUD<br/>and keep playing"]
-    D -->|Restore controls| C
-    C --> F["Confirm / enter<br/>activity"]
-```
+- Arena and PvE flows use a common presentation vocabulary while retaining their existing service paths.
+- Players can minimise team controls, keep playing with status feedback, and return to the current team state.
+- Stable membership avoids repeated structural refresh propagation; support-context changes have a narrower update path, and player details retain explicit refresh opportunities.
+- A support-search callback cycle was removed so completing a detail request no longer starts the same request again. [Debugging case](docs/DEBUGGING.md).
 
-Team formation and support are related entry points. They use existing services rather than one universal backend state machine.
+## Deeper reading
+
+- **Feature and architecture:** [Case study](docs/CASE_STUDY.md) · [Architecture](docs/ARCHITECTURE.md) · [Decision rationale](docs/DECISIONS.md).
+- **Implementation:** [Guided code tour](docs/CODE_TOUR.md) · [TeamModel](Content/Lua/GameLogics/Team/TeamModel.lua).
+- **Reliability and cost:** [Callback and availability fixes](docs/DEBUGGING.md) · [HUD performance](docs/HUD_PERFORMANCE.md).
+- **Additional trade-off:** [Cached eligibility, immediate feedback and server authority](docs/DECISIONS.md#2-immediate-feedback-is-not-authoritative-eligibility).
+- **Verification:** [Focused tests — added for this portfolio](docs/TESTING.md) · [Independent HUD demonstration model — not production code](examples/hud-refresh/HudRefreshModel.lua).
+- **Evidence scope:** [Historical work, version boundaries, tests and footage](docs/EVIDENCE.md).
 
 ## Gameplay footage and screenshots
 
-Four separate examples from public Bilibili gameplay footage, with English captions. Original images and creator watermarks are preserved. [Source notes and label translations](media/SCREENSHOTS.md).
+<details>
+<summary>Open the four-view gallery with English captions</summary>
 
 ### 1. Team setup and invitations
 
-![Team setup with three occupied member slots, one empty slot and an invitation list on the right.](media/screenshots/Team_MainUI.png)
+![Team setup with three occupied slots, one empty slot and an invitation browser.](media/screenshots/Team_MainUI.png)
 
-The panel brings together the activity, current members and invitations. The crown identifies the leader; **Recommended / Friends / Recent / World** select invitation sources. The bottom button reads **Waiting to start**. **Minimise** returns to gameplay without leaving the team.
+The crown identifies the leader. **Recommended / Friends / Recent / World** select invitation sources; the action reads **Waiting to start**.
 
 ### 2. In-game party HUD
 
-![Combat screenshot with the party roster on the right, showing member levels, names, health bars and distances.](media/screenshots/HUD_TeamPanel.png)
+![Combat with the party roster on the right, showing levels, names, health and distance.](media/screenshots/HUD_TeamPanel.png)
 
-**Focus on the member list on the right, which I implemented.** Levels, names, health and distance remain visible during combat without opening the team panel. Open the image at full size to inspect the roster.
-
-The [HUD performance case](docs/HUD_PERFORMANCE.md) explains how membership refreshes and detail freshness were handled behind this interface. The still shows the UI, not measured optimisation results.
+**Focus on the member list on the right.** Levels, names, health and distance remain visible during combat without opening the team panel. [The refresh work behind this HUD](docs/HUD_PERFORMANCE.md).
 
 ### 3. Finding players for support
 
-![Multiplayer player browser showing Invite for support buttons, a Busy player, favourites, filters and search.](media/screenshots/SupportUI.png)
+![Player browser with support invitations, a busy player, favourites, filters and search.](media/screenshots/SupportUI.png)
 
-Available rows offer **Invite for support**; an unavailable player is labelled **Busy**. Favourites, filters, refresh and search support discovery. My work connected this support context and availability feedback to the native invitation path.
+Available rows offer **Invite for support**; an unavailable player is labelled **Busy**. Favourites, filters, refresh and search support discovery.
 
 ### 4. Compact team-status notice
 
-![Gameplay screenshot with a blue activity and team-status notice at the top centre.](media/screenshots/TeamHUD.png)
+![Gameplay with a blue activity and team-status banner at the top centre.](media/screenshots/TeamHUD.png)
 
-**Focus on the blue banner at the top centre.** It displays the activity and **Forming a team** status (组队中). This notice is distinct from the party roster; its implementation provides a route back to team controls. The displayed state is team formation, not evidence that matchmaking is active.
+**Focus on the blue banner at the top centre.** It displays the activity and **Forming a team** status. This is distinct from the party roster and provides a route back to team controls.
 
-## Read the code in ten minutes
+[Footage credits and label translations](media/SCREENSHOTS.md). These are separately labelled stills.
 
-1. [TeamModel](Content/Lua/GameLogics/Team/TeamModel.lua): shared presentation state and open/hide/restore.
-2. [Main frame](Content/Lua/GameLogics/Team/TeamMatching/TeamMatchingMainFrame.lua) and [compact notice](Content/Lua/GameLogics/Team/TeamMatching/TeamMatchingNotice.lua): role-dependent controls, commands and feedback.
-3. [Multiplayer model](Content/Lua/GameLogics/MultiPlayer/MultiPlayerModel.lua) → [list panel](Content/Lua/GameLogics/MultiPlayer/MultiPlayerWorldListPanel.lua) → [player item](Content/Lua/GameLogics/MultiPlayer/MultiPlayerWorldItem.lua): support context, requests and availability.
-4. [Native support manager](Source/ProjectZ/GameLogic/MultiPlayer/PzMultiPlayerManager.cpp): invitation dispatch and pending/cooldown ownership.
-5. [Debugging](docs/DEBUGGING.md): historical callback fix, later maintenance and remaining validation targets.
-6. [HUD performance](docs/HUD_PERFORMANCE.md): native notification granularity, list-binding costs and the evolution of detail freshness. An independently written [Lua model](examples/hud-refresh/HudRefreshModel.lua) makes the trade-offs testable.
+</details>
 
-## Scope and verification
-
-Selected implementations preserve module paths and calling relationships. Omitted bodies are labelled; C++ headers are interface outlines. The full Unreal runtime, services and binary widgets are external. [Dependencies and widget contracts](docs/DEPENDENCIES.md) · [Implementation map](docs/source-manifest.json).
-
-Focused tests execute Lua excerpts with controlled services, including the before/after callback case. Additional tests exercise the independently written HUD refresh model; model counters are not device-performance measurements. The suite records an existing cache-miss assumption and does not claim device, renderer or shipping-performance validation. [Results and limitations](docs/TESTING.md). Screenshots illustrate separate states, not a continuous click-through. Game visuals and project material remain subject to their respective rights.
-
-**Related cases:** [Building & interactable UI](https://github.com/seak123/building-ui-portfolio) · [Mechanical workers, world-space UI & authoring](https://github.com/seak123/mechanical-workers-ui-portfolio).
+**Related cases:** [Building UI](https://github.com/seak123/building-ui-portfolio) · [Mechanical workers and world-space UI](https://github.com/seak123/mechanical-workers-ui-portfolio).
