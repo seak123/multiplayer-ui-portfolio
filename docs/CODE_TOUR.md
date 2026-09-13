@@ -58,6 +58,20 @@ In [MultiPlayerModel.lua](../Content/Lua/GameLogics/MultiPlayer/MultiPlayerModel
 
 The adjacent headers keep selected signatures readable. They are explicitly labelled outlines; original engine types and generated service dependencies are external.
 
-## 7. Implementation map and validation
+## 7. HUD performance: read the cost chain, then run the model
 
-[source-manifest.json](source-manifest.json) maps file paths to included methods and omitted bodies. Its checksums validate the displayed files only; no project revision identifiers are published. [TESTING.md](TESTING.md) explains which methods execute in the focused harness and what still needs the actual game/editor.
+[HUD_PERFORMANCE.md](HUD_PERFORMANCE.md) follows the tracked-player notification into roster data population, item binding and detail queries. The production method names there are navigation context; the full HUD implementation is not included in this export.
+
+The independently written [HudRefreshModel.lua](../examples/hud-refresh/HudRefreshModel.lua) gives a small executable counterpart:
+
+- `add_member` / `remove_member` / `tick`: dirty notification gating, including the deliberately conservative removal branch.
+- `refresh_roster` / `request_detail`: count list rebinding and detail-API work separately; no inference about widget creation or packet counts.
+- `set_assist_id` / `refresh_overlay`: support-only updates.
+- `refresh_vitals`: changing row values without rebuilding membership.
+- `advance_detail_clock`: a deterministic test scheduler for periodic forced details, not the engine's widget-timer implementation.
+
+[test_hud_refresh.py](../tests/test_hud_refresh.py) compares unconditional and gated notifications, then tests stale-cache and forced-refresh behaviour. These are model tests, separate from the retained-function tests used for the support callback fix.
+
+## 8. Implementation map and validation
+
+[source-manifest.json](source-manifest.json) maps the existing code excerpts to included methods and omitted bodies. Its checksums validate those displayed files only; no project revision identifiers are published. The independently written `examples/` model is not a source excerpt and is not part of that map. [TESTING.md](TESTING.md) explains which methods execute in the focused harness and what still needs the actual game/editor.

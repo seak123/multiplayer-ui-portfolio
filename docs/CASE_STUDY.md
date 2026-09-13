@@ -8,7 +8,7 @@ ProjectZ is a multiplayer game built on a modified Unreal codebase. Players need
 
 I developed and maintained the gameplay features and their associated interfaces across those layers. This included team/support integration, compact team status and the right-side party HUD shown in the gallery. Follow-up work addressed support-search behaviour and stale player availability, using the team's existing multiplayer services and shared UI framework.
 
-The three decisions below connect that responsibility to concrete behaviour: keep shared state across views; reuse discovery with an explicit support context; and separate data requests from presentation refresh.
+The four decisions connect that responsibility to concrete behaviour: keep shared state across views; reuse discovery with an explicit support context; separate data requests from presentation refresh; and control roster-refresh work without losing data freshness.
 
 ## The problem was the flow, not just the screen
 
@@ -66,8 +66,18 @@ The historical change removed the duplicate/re-entrant path and left a completio
 
 Other maintenance changes routed invitation refresh back through the complete availability calculation and updated lists after player details arrived. These reinforce the same design rule: update the meaningful player state, not just whichever button happened to change last.
 
+## HUD optimisation and the cost of stale data
+
+The in-game roster introduced a different problem from the support-search callback cycle. A native tracked-player refresh emitted a Lua notification on every tick; the receiving HUD cleared and repopulated its list, and item binding entered the detail-query path. An iOS idle-scene performance issue made this repeated work relevant even when roster membership was stable.
+
+I introduced dirty-gated membership notifications and refined duplicate-add handling. Support-context changes later gained a narrower overlay update path. Neither change removed all ticking or turned the list into a per-row diff system.
+
+Detail freshness required a separate decision. Binding initially moved to cache-permitted queries; later level-display maintenance added a periodic forced refresh and eventually restored forced queries on binding. These changes show an evolving policy, not a claim that every later bug had the same root cause. Health and distance remained separate from structural updates.
+
+The [dedicated performance chapter](HUD_PERFORMANCE.md) connects the cost chain, implementation changes and remaining boundaries. Its independently written model provides work-count and freshness checks without presenting synthetic results as measured game performance.
+
 ## Outcome
 
-The work delivered team controls, compact status and contextual support on top of existing gameplay services. Players could minimise and restore the team interface, use discovery tools for support, and receive state-dependent invitation feedback. Maintenance removed the demonstrated request/completion cycle and restored complete availability refresh for affected rows.
+The work delivered team controls, compact status and contextual support on top of existing gameplay services. Players could minimise and restore the team interface, use discovery tools for support, and receive state-dependent invitation feedback. Maintenance removed the demonstrated request/completion cycle and restored complete availability refresh for affected rows. Roster work also gained notification gating, while subsequent detail-query changes addressed level freshness rather than treating reduced request frequency as the only goal.
 
 These are observable behavioural outcomes. The [screenshots](../README.md#gameplay-footage-and-screenshots) show the interfaces; the [debugging chapter](DEBUGGING.md) and [tests](TESTING.md) make the implementation and regression boundaries inspectable. Measurement and runtime limits are recorded in the verification chapter.

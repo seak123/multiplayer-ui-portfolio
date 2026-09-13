@@ -6,9 +6,9 @@ Team setup, invitations, readiness, matching and support requests form one conne
 
 I developed and maintained gameplay features and their associated UI, including team/support integration, compact status and follow-up fixes. I also implemented the right-side party HUD shown below. The work used the team's shared Lua/UMG framework and existing multiplayer services.
 
-[中文案例](docs/README.zh-CN.md) · [Full case study](docs/CASE_STUDY.md) · [Architecture](docs/ARCHITECTURE.md) · [Code tour](docs/CODE_TOUR.md) · [Debugging](docs/DEBUGGING.md)
+[中文案例](docs/README.zh-CN.md) · [Full case study](docs/CASE_STUDY.md) · [Architecture](docs/ARCHITECTURE.md) · [Code tour](docs/CODE_TOUR.md) · [Debugging](docs/DEBUGGING.md) · [HUD performance](docs/HUD_PERFORMANCE.md)
 
-## Three engineering decisions
+## Four engineering decisions
 
 **1. Treat the full panel and compact notice as views of the same live feature.**
 
@@ -22,7 +22,11 @@ A world interaction carries an `AssistId` into the existing multiplayer browser.
 
 A support-search freeze involved a detail request whose completion triggered another request. A duplicate Lua method definition hid the effective callback. The historical fix removed that cycle; the included before/after test demonstrates terminating refresh behaviour. [Fix and regression evidence](docs/DEBUGGING.md).
 
-Together, these decisions connect player-facing continuity, practical reuse and maintainable asynchronous behaviour.
+**4. Reduce redundant roster work without sacrificing data freshness.**
+
+An iOS performance issue exposed repeated native-to-Lua roster refreshes, list repopulation and detail queries. I gated membership notifications and separated support-context updates. Detail-query policy then evolved: cache-permitted binding reduced repeat work, but later level-display problems required periodic forced refreshes and forced queries on binding. The lesson is to distinguish structural changes from live values and profile freshness—not simply refresh everything less often. [Optimisation, trade-offs and executable checks](docs/HUD_PERFORMANCE.md).
+
+Together, these decisions connect player-facing continuity, practical reuse, asynchronous correctness and logic-layer UI performance.
 
 ## The player experience
 
@@ -53,6 +57,8 @@ The panel brings together the activity, current members and invitations. The cro
 
 **Focus on the member list on the right, which I implemented.** Levels, names, health and distance remain visible during combat without opening the team panel. Open the image at full size to inspect the roster.
 
+The [HUD performance case](docs/HUD_PERFORMANCE.md) explains how membership refreshes and detail freshness were handled behind this interface. The still shows the UI, not measured optimisation results.
+
 ### 3. Finding players for support
 
 ![Multiplayer player browser showing Invite for support buttons, a Busy player, favourites, filters and search.](media/screenshots/SupportUI.png)
@@ -72,11 +78,12 @@ Available rows offer **Invite for support**; an unavailable player is labelled *
 3. [Multiplayer model](Content/Lua/GameLogics/MultiPlayer/MultiPlayerModel.lua) → [list panel](Content/Lua/GameLogics/MultiPlayer/MultiPlayerWorldListPanel.lua) → [player item](Content/Lua/GameLogics/MultiPlayer/MultiPlayerWorldItem.lua): support context, requests and availability.
 4. [Native support manager](Source/ProjectZ/GameLogic/MultiPlayer/PzMultiPlayerManager.cpp): invitation dispatch and pending/cooldown ownership.
 5. [Debugging](docs/DEBUGGING.md): historical callback fix, later maintenance and remaining validation targets.
+6. [HUD performance](docs/HUD_PERFORMANCE.md): native notification granularity, list-binding costs and the evolution of detail freshness. An independently written [Lua model](examples/hud-refresh/HudRefreshModel.lua) makes the trade-offs testable.
 
 ## Scope and verification
 
 Selected implementations preserve module paths and calling relationships. Omitted bodies are labelled; C++ headers are interface outlines. The full Unreal runtime, services and binary widgets are external. [Dependencies and widget contracts](docs/DEPENDENCIES.md) · [Implementation map](docs/source-manifest.json).
 
-Focused tests execute Lua excerpts with controlled services, including the before/after callback case. They record an existing cache-miss assumption and do not claim device, renderer or shipping-performance validation. [Results and limitations](docs/TESTING.md). Screenshots illustrate separate states, not a continuous click-through. Game visuals and project material remain subject to their respective rights.
+Focused tests execute Lua excerpts with controlled services, including the before/after callback case. Additional tests exercise the independently written HUD refresh model; model counters are not device-performance measurements. The suite records an existing cache-miss assumption and does not claim device, renderer or shipping-performance validation. [Results and limitations](docs/TESTING.md). Screenshots illustrate separate states, not a continuous click-through. Game visuals and project material remain subject to their respective rights.
 
 **Companion case:** [Building UI — contextual controls, crafting actions and world-object interaction](https://github.com/seak123/building-ui-portfolio).

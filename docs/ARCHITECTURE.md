@@ -75,8 +75,21 @@ The notice consumes this through `UIUtil.SetImagePathAsync`. That is a specific 
 
 ## Timers and performance boundaries
 
+The full team panel, compact matching notice and in-game member roster are distinct UI surfaces. The timer examples immediately below describe the panel and notice; the roster's separate optimisation and freshness policy follow afterwards.
+
 The feature is primarily event-driven, not exclusively event-driven. The full panel requests player details periodically (five-second timer in the inspected code); the HUD formats matching elapsed time on a half-second timer. The HUD reads elapsed time from the native matching manager instead of accumulating a separate Lua counter.
 
 The support list also contains a later 300 ms search debounce, cancelling the pending scoped timer on new input. This is part of the shared browsing implementation. It can reduce intermediate queries during typing; it neither guarantees one request per user interaction nor prevents an older response arriving after a newer one.
 
 For a dedicated performance investigation I would measure refresh counts, request fan-out, Lua/native allocations, active subscriptions and game-thread UI work independently. No such measurements are fabricated for this repository.
+
+### In-game roster: separate update reasons
+
+The [HUD performance case](HUD_PERFORMANCE.md) describes an implemented logic-layer optimisation and its later correctness trade-offs:
+
+- **Membership:** `bTraceDirty` gates the native `RefreshTracePlayer` notification. The downstream list still clears and repopulates when notified; this is not incremental row diffing.
+- **Support context:** `RegionAssistIDUpdated` has a handler that updates the support overlay without requiring a member-list rebuild.
+- **Changing brief values:** health/distance remain on a separate frequent presentation path, not throttled to membership changes.
+- **Richer details:** cache-permitted binding was later revised with a two-second forced refresh and forced queries on binding to address level-display problems. Request cadence does not guarantee maximum data age.
+
+The addition branch's dirty marking was narrowed to actual insertions, while removal remained conservative. This is a scoped optimisation, not proof that all mutation paths, hidden-widget timers or stale callbacks are fully handled. The [model](../examples/hud-refresh/HudRefreshModel.lua) isolates these responsibilities for tests; it is not a copy of the production C++/Lua architecture.

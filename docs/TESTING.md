@@ -1,6 +1,6 @@
 # Verification and remaining validation
 
-Reverified on 13 September 2026: **17 tests run — 16 passed, 1 expected failure** documenting the cache-miss assumption below. The suite includes the 64-case team presentation matrix. No unexpected failures remained. This is a local test result, not CI, in-engine or device validation.
+Reverified on 13 September 2026: **28 tests run — 27 passed, 1 expected failure** documenting the cache-miss assumption below. The suite includes the 64-case team presentation matrix and 11 new HUD work/freshness model tests. No unexpected failures remained. This is a local test result, not CI, in-engine or device validation.
 
 ## Run the focused tests
 
@@ -13,7 +13,7 @@ python -m pip install -r requirements-test.txt
 python -m unittest discover -s tests -v
 ```
 
-The test doubles have no network or game-service connection. `runtime.lua` supplies native queries, widget setters, event delivery and a queued attribute callback service. Tests execute retained Lua functions, not a newly written state reducer claimed to be the original implementation.
+The test doubles have no network or game-service connection. For `test_portfolio.py`, `runtime.lua` supplies native queries, widget setters, event delivery and a queued attribute callback service; these tests execute retained Lua functions. Separately, `test_hud_refresh.py` runs an independently written explanatory model with a synchronous in-memory detail service. That model is not claimed to be the original implementation.
 
 ## What is covered
 
@@ -29,6 +29,20 @@ The test doubles have no network or game-service connection. `runtime.lua` suppl
 - Exercise current support offline, busy, pending, available and robot paths, including an invitation refresh on an offline row.
 - Record the current online-item cache-miss assumption as one expected failure.
 
+## HUD work and freshness model
+
+The [performance chapter](HUD_PERFORMANCE.md) explains the historical implementation decisions. Its [model](../examples/hud-refresh/HudRefreshModel.lua) has 11 checks in [test_hud_refresh.py](../tests/test_hud_refresh.py):
+
+- Stable-roster ticks: compare unconditional and dirty-gated notifications and their downstream list-binding/detail-API work.
+- Coalesce additions before the next dispatch; do not notify again for duplicate additions.
+- Refresh on removal; retain the conservative no-op removal case instead of inventing perfect invalidation.
+- Update support context without rebuilding members; update health/distance independently.
+- Demonstrate stale cache-permitted binding, a forced binding query, a cache miss and periodic forced details without structural rebinding.
+
+Run just this portion with `python -m unittest discover -s tests -p test_hud_refresh.py -v`.
+
+The stable-roster fixture uses a fixed synthetic tick count. Its event and binding counts are deterministic checks, **not a benchmark, measured speedup or network saving**. Detail timing is represented by a separate test clock; real per-widget timer phase, callback scheduling, service request coalescing, network errors, multiple tracking-reason groups and recycled-row lifetime are not simulated. The tests do not prove that every production clear/full-sync path invalidates correctly.
+
 ## Expected failure is intentional
 
 `test_known_cache_miss_assumption_for_online_item` documents that the exported `RefreshAssistState` assumes a cached detail record on an online path. The test removes that record. The current excerpt cannot safely handle this input. It is not silently modified just to make a green test report.
@@ -37,7 +51,7 @@ This does not prove a production crash is reachable: the real caller/cache contr
 
 ## What is not covered
 
-No Unreal build, real UMG rendering, native C++ execution, network/backend interaction, cross-platform timing, accessibility validation, console navigation or measured performance work was performed by this harness. The repository is not advertised as a runnable game or a complete automated integration suite.
+No Unreal build, real UMG rendering, native C++ execution, network/backend interaction, cross-platform timing, accessibility validation, console navigation or measured game-performance work was performed by this harness. The repository is not advertised as a runnable game or a complete automated integration suite.
 
 ## In-editor / device regression plan
 
@@ -48,5 +62,6 @@ No Unreal build, real UMG rendering, native C++ execution, network/backend inter
 5. **State fidelity:** offline, busy, pending, accepted/expired invitations, favourites/detail-data arriving later; include several rows to detect global-event side effects.
 6. **Authoring and presentation:** missing/renamed widget binding, longer localised strings, changing culture with the HUD visible, animation state, DPI/aspect ratios and the actual supported input devices.
 7. **Costs:** under an identical list/interaction workload, measure callback count, request count, allocations/data handles, native list entry count, and UI CPU work. Report these separately rather than inferring FPS from an avoided request.
+8. **Roster invalidation and freshness:** unchanged members, duplicate additions, removals, bulk clear/full sync, level changes, cache misses and delayed replies. Verify support-only updates do not require rebuilding the roster, and that necessary detail refreshes do not compromise health/distance responsiveness. Distinguish API calls from actual dispatched requests.
 
 These are proposed regression checks, not a claim that every item was historically executed or that the feature already passes all of them.
