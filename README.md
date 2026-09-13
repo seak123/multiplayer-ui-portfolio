@@ -1,18 +1,24 @@
 # Multiplayer UI: from finding teammates to playing together
 
-**Evan (Yaxin) Ge · Lua / C++ / UMG · ProjectZ engineering case study**
+**Evan (Yaxin) Ge · Lua / C++ / UMG · Past ProjectZ development work**
 
 Team setup, invitations, readiness, matching and support requests form one connected player experience across menus and gameplay. The challenge was keeping several views aligned with live multiplayer state.
 
 I developed and maintained gameplay features and their associated UI, including team/support integration, compact status and follow-up fixes. I also implemented the right-side party HUD shown below. The work used the team's shared Lua/UMG framework and existing multiplayer services.
 
-[中文案例](docs/README.zh-CN.md) · [Full case study](docs/CASE_STUDY.md) · [Architecture](docs/ARCHITECTURE.md) · [Code tour](docs/CODE_TOUR.md) · [Debugging](docs/DEBUGGING.md) · [HUD performance](docs/HUD_PERFORMANCE.md)
+[中文 README](docs/README.zh-CN.md) · [Case study](docs/CASE_STUDY.md) · [Decisions](docs/DECISIONS.md) · [Code tour](docs/CODE_TOUR.md) · [Architecture](docs/ARCHITECTURE.md) · [Visuals](media/SCREENSHOTS.md) · [Verification](docs/TESTING.md)
+
+## How to read this case
+
+This is a retrospective of specific work on ProjectZ, not a proposal for a new feature. The account follows actual implementation behaviour and verified interface relationships. Selected code excerpts retain module paths and calling relationships; omitted bodies and shortened interface outlines are labelled.
+
+Separately written reference models and tests are supporting material, not original game code or historical validation results. Documentation is in English, with one Chinese README. The [decision rationale](docs/DECISIONS.md) combines my account of the work with the implementation boundaries visible in the code.
 
 ## Four engineering decisions
 
-**1. Treat the full panel and compact notice as views of the same live feature.**
+**1. Adapt different matching systems into one UI-facing model.**
 
-`TeamModel` derives presentation from membership, role, readiness and matching. Minimising changes presentation; leaving a team or cancelling matching is an explicit command. Players retain status and a route back to controls while continuing to play. [Team flow](docs/CASE_STUDY.md#flow-a-create-a-team-minimise-restore).
+The feature grew from arena matchmaking into PvE teams with different protocols and stage definitions. I worked on a common model boundary so views could use consistent team state while requests still reached the appropriate service. `TeamModel` retains explicit mode branches; it is an incremental integration, not a replacement backend. The full panel and compact HUD then derive their presentation from this shared state. [Reasoning and code](docs/DECISIONS.md#1-one-ui-facing-model-over-different-matching-systems) · [Team flow](docs/CASE_STUDY.md#flow-a-create-a-team-minimise-restore).
 
 **2. Reuse player discovery, but preserve the meaning of the action.**
 
@@ -27,6 +33,8 @@ A support-search freeze involved a detail request whose completion triggered ano
 An iOS performance issue exposed repeated native-to-Lua roster refreshes, list repopulation and detail queries. I gated membership notifications and separated support-context updates. Detail-query policy then evolved: cache-permitted binding reduced repeat work, but later level-display problems required periodic forced refreshes and forced queries on binding. The lesson is to distinguish structural changes from live values and profile freshness—not simply refresh everything less often. [Optimisation, trade-offs and executable checks](docs/HUD_PERFORMANCE.md).
 
 Together, these decisions connect player-facing continuity, practical reuse, asynchronous correctness and logic-layer UI performance.
+
+A related [data-freshness decision](docs/DECISIONS.md#2-immediate-feedback-is-not-authoritative-eligibility) explains the tension between immediate client feedback and cached player eligibility. It distinguishes my account of the later interaction policy from the request paths retained in this export.
 
 ## The player experience
 
@@ -86,4 +94,4 @@ Selected implementations preserve module paths and calling relationships. Omitte
 
 Focused tests execute Lua excerpts with controlled services, including the before/after callback case. Additional tests exercise the independently written HUD refresh model; model counters are not device-performance measurements. The suite records an existing cache-miss assumption and does not claim device, renderer or shipping-performance validation. [Results and limitations](docs/TESTING.md). Screenshots illustrate separate states, not a continuous click-through. Game visuals and project material remain subject to their respective rights.
 
-**Companion case:** [Building UI — contextual controls, crafting actions and world-object interaction](https://github.com/seak123/building-ui-portfolio).
+**Related cases:** [Building & interactable UI](https://github.com/seak123/building-ui-portfolio) · [Mechanical workers, world-space UI & authoring](https://github.com/seak123/mechanical-workers-ui-portfolio).

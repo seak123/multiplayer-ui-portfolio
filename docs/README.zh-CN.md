@@ -1,12 +1,30 @@
 # 组队、匹配与支援 UI：工程案例
 
-[英文首页](../README.md) · [完整案例](CASE_STUDY.md) · [架构](ARCHITECTURE.md) · [代码阅读路线](CODE_TOUR.md) · [问题定位](DEBUGGING.md) · [HUD 性能与数据时效性](HUD_PERFORMANCE.zh-CN.md)
+[英文首页](../README.md) · [完整案例](CASE_STUDY.md) · [架构](ARCHITECTURE.md) · [代码阅读路线](CODE_TOUR.md) · [问题定位](DEBUGGING.md) · [HUD 性能与数据时效性](HUD_PERFORMANCE.md)
+
+## 材料说明
+
+这是对 ProjectZ 具体历史工作的回顾。正文以实际实现和核对过的接口、调用关系为准，省略实现会标注；独立参考模型和测试不作为原项目代码或历史测试结果。仓库以英文为主，本页为唯一中文 README，其他章节为英文。
 
 ## 工作范围与核心决策
 
 我开发和维护了玩法及其配套 UI，包括组队／支援接入、缩小状态提示和后续问题修复，也独立完成了截图中的右侧队员 HUD。实现结合 C++ 游戏系统、Lua 界面逻辑和 UMG 控件，沿用团队共同维护的 UI 框架与多人服务。
 
 案例围绕四个决策展开：**多个视图共用真实状态；复用玩家浏览能力但保留支援动作语义；沿完整请求与回调链解决 UI 问题；减少队员 HUD 的重复工作，同时保证数据及时更新。** 玩家由此能组队、邀请、准备、匹配，收起界面继续游戏，再恢复操作；需要帮助时则从玩法上下文进入支援列表。
+
+## 决策补充：不同匹配协议之上的统一 Model
+
+最初组队围绕 CSQ 竞技场匹配展开，后来 PVE 副本接入了不同的协议、阶段定义和匹配后队员数据。我意识到 UI 不能随着玩法增加，分别解释越来越多种原始数据，因此加入统一面向 UI 的 Model 边界，把不同来源校准为队伍状态与阶段，同时保留各模式自己的请求路径。
+
+当前 `TeamModel` 可以核实这层职责：普通队伍与匹配队伍分别同步，`IsMatching` 结合统一阶段与竞技场匹配状态，匹配和取消按模式分发，再导出 HUD 状态。这是保留分支的渐进适配，不是完全隔绝协议的理想化架构，也不需要猜测服务器为何采用原设计。
+
+## 决策补充：即时反馈不等于最终资格判断
+
+玩家列表先取得 RID，再批量拉取详情，缓存等级等数据可能过期。为捕捉低频资格变化而持续刷新整张列表，成本不合理。在我参与的 2025 年后期迭代中，处理方式是：客户端仍快速提示，但不因可能过期的等级判断阻断 RPC，同时请求刷新被操作的那名玩家；最终资格由服务器判断，原有权威校验和冷却限制仍保留。
+
+代价是可能短暂出现错误的即时提示，这是讨论后策划接受的体验取舍，并不是零误差方案。现有代码节选展示较早版本的批量详情请求、缓存显示、邀请 RPC，以及另一条支援路径中的单玩家刷新；不将这些拼接成已经验证的后期完整点击逻辑。
+
+关键词：protocol adaptation · common UI-facing model · cache freshness · advisory feedback · server authority · targeted refresh。[完整叙述与版本边界（英文）](DECISIONS.md)。
 
 ## 案例 1：完整面板与缩小 HUD 的连续体验
 
@@ -92,7 +110,7 @@
 
 这不是引擎渲染优化，也没有实机 FPS 数字。新增的独立 Lua 模型验证通知与绑定次数、支援区域独立更新，以及缓存／强制刷新之间的行为差异；原有代码节选没有被改写成一个理想化的新架构。
 
-[阅读完整中文叙述](HUD_PERFORMANCE.zh-CN.md) · [English case](HUD_PERFORMANCE.md) · [模型与测试](../tests/test_hud_refresh.py)。
+[完整性能案例（英文）](HUD_PERFORMANCE.md) · [模型与测试](../tests/test_hud_refresh.py)。
 
 **技术要点**：refresh granularity · notification gating · list rebinding · data freshness · correctness trade-off。
 
@@ -108,7 +126,7 @@
 
 ## 阅读路线
 
-先看[英文首页与截图](../README.md)，了解玩家操作和界面状态；再阅读[完整案例](CASE_STUDY.md)中的两个流程。[架构](ARCHITECTURE.md)说明各层契约，[代码阅读路线](CODE_TOUR.md)定位相关函数，[问题定位](DEBUGGING.md)解释回调环与状态刷新问题，[HUD 性能](HUD_PERFORMANCE.zh-CN.md)讲述优化及后续数据时效性维护，[测试](TESTING.md)列出验证范围。
+先看[英文首页与截图](../README.md)，了解玩家操作和界面状态；再阅读[完整案例](CASE_STUDY.md)中的两个流程。[架构](ARCHITECTURE.md)说明各层契约，[代码阅读路线](CODE_TOUR.md)定位相关函数，[问题定位](DEBUGGING.md)解释回调环与状态刷新问题，[HUD 性能](HUD_PERFORMANCE.md)讲述优化及后续数据时效性维护，[测试](TESTING.md)列出验证范围。
 
 ## 实现范围与验证
 

@@ -4,6 +4,8 @@
 
 The paths preserve the split between native source and Lua content. Follow a complete flow first, then inspect individual methods. `-- Implementation omitted.` marks an out-of-scope body, not working game behaviour. The test harness rejects calls into these placeholders.
 
+For the historical reason this shared boundary became necessary, read [the arena/PvE adaptation decision](DECISIONS.md#1-one-ui-facing-model-over-different-matching-systems). Later interaction-time freshness policy is documented there with a separate version boundary.
+
 ## 1. Shared state → two presentations
 
 Start at [TeamModel.lua](../Content/Lua/GameLogics/Team/TeamModel.lua).

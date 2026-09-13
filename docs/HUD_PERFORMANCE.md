@@ -1,6 +1,6 @@
 # HUD performance: refresh granularity and data freshness
 
-[Overview](../README.md) · [中文](HUD_PERFORMANCE.zh-CN.md) · [Executable model](../examples/hud-refresh/HudRefreshModel.lua) · [Tests](../tests/test_hud_refresh.py)
+[Overview](../README.md) · [中文 README](README.zh-CN.md) · [Executable model](../examples/hud-refresh/HudRefreshModel.lua) · [Tests](../tests/test_hud_refresh.py)
 
 **The engineering problem:** a small party roster can trigger substantial repeated work if its update signal is too broad. Reducing that work must not leave the player looking at stale information.
 

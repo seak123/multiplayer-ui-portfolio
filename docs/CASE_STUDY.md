@@ -10,6 +10,10 @@ I developed and maintained the gameplay features and their associated interfaces
 
 The four decisions connect that responsibility to concrete behaviour: keep shared state across views; reuse discovery with an explicit support context; separate data requests from presentation refresh; and control roster-refresh work without losing data freshness.
 
+## Why the shared model became necessary
+
+The feature expanded from arena matchmaking into PvE dungeons backed by different protocol and stage definitions. I worked on a common UI-facing model to translate those inputs, while keeping mode-specific request dispatch. This is the architectural context for sharing state across the panel and HUD, not just a way to reuse screen code. [Decision rationale and implementation limits](DECISIONS.md#1-one-ui-facing-model-over-different-matching-systems).
+
 ## The problem was the flow, not just the screen
 
 Several facts determine what the player should see:
@@ -75,6 +79,10 @@ I introduced dirty-gated membership notifications and refined duplicate-add hand
 Detail freshness required a separate decision. Binding initially moved to cache-permitted queries; later level-display maintenance added a periodic forced refresh and eventually restored forced queries on binding. These changes show an evolving policy, not a claim that every later bug had the same root cause. Health and distance remained separate from structural updates.
 
 The [dedicated performance chapter](HUD_PERFORMANCE.md) connects the cost chain, implementation changes and remaining boundaries. Its independently written model provides work-count and freshness checks without presenting synthetic results as measured game performance.
+
+## A related interaction-time freshness decision
+
+Rare changes to a player's eligibility made broad polling expensive relative to the event being detected. My account of the later policy separates immediate cache-based feedback from authoritative invitation validation and refreshes the selected player's details. The combined click path is not reproduced in the retained code, so its evidence boundary is recorded separately. [Trade-off, design acceptance and source coverage](DECISIONS.md#2-immediate-feedback-is-not-authoritative-eligibility).
 
 ## Outcome
 
