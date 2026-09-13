@@ -1,20 +1,57 @@
 # 组队、匹配与支援 UI：从找到队友到共同游戏
 
-![组队主界面：成员槽位与邀请列表](../media/screenshots/Team_MainUI.png)
-
-把组队、邀请、匹配与支援连接成跨越面板和游戏内 HUD 的连续体验，让不同界面与实时多人状态保持一致。
+把组队、邀请支援和战斗中的队员信息，连接为跨越菜单与游戏内 HUD 的连续体验。
 
 **Evan（Yaxin）Ge · Lua / C++ / UMG · ProjectZ**
 
-[English](../README.md) · [四张截图与英文图注](../README.md#gameplay-footage-and-screenshots)
+[English](../README.md) · [功能截图](#功能截图) · [我的工作](#我的工作) · [深入阅读](#深入阅读)
 
-*成员、队长标记与邀请来源集中在同一面板；收起界面可以返回游戏而不离队，图中操作为“等待开始”。[素材署名与标签翻译](../media/SCREENSHOTS.md)。*
+## 功能截图
+
+三张图分别展示完整面板、队员 HUD 与支援列表。[全部四张图、英文标签和素材署名](../media/SCREENSHOTS.md)。
+
+### 组队主面板与邀请
+
+![组队成员槽位与右侧邀请列表](../media/screenshots/Team_MainUI.png)
+
+**功能：**查看活动与队员，通过推荐、好友、最近或世界寻找玩家。皇冠标记队长，当前操作为“等待开始”；功能支持收起面板而不离队。
+
+**相关工作：**不同匹配协议的共同状态、按角色变化的操作、邀请详情，以及主面板和缩小通知之间的状态连接。
+
+[面板与 HUD 流程](CASE_STUDY.md#flow-a-create-a-team-minimise-restore) · [统一 Model 决策](DECISIONS.md#1-one-ui-facing-model-over-different-matching-systems) · [面板操作实现](CODE_TOUR.md#2-full-panel--player-intent)
+
+### 战斗队员 HUD
+
+![战斗画面右侧的队员等级、名字、血量与距离](../media/screenshots/HUD_TeamPanel.png)
+
+**功能：**关注画面右侧队员列表，战斗中无需打开主面板也能查看等级、名字、血量与距离。[查看原图](../media/screenshots/HUD_TeamPanel.png)。
+
+**相关工作：**我完成了该 HUD 的实现和数据维护，区分成员结构、实时战斗信息与较完整玩家资料的刷新职责，减少重复列表工作并保留必要的数据刷新。
+
+[性能与数据时效性案例](HUD_PERFORMANCE.md) · [刷新链路代码导读](CODE_TOUR.md#7-hud-performance-read-the-cost-chain-then-run-the-model)
+
+### 支援列表与可用状态
+
+![带邀请助战、忙碌状态、收藏、筛选与搜索的玩家列表](../media/screenshots/SupportUI.png)
+
+**功能：**通过收藏、筛选、刷新和搜索寻找支援玩家；可用条目显示“邀请助战”，不可用条目显示“忙碌中”。
+
+**相关工作：**将活动支援 ID 带入既有浏览界面，绑定详情与可用状态，并通过原生管理器处理邀请及等待／冷却。
+
+[支援完整流程](CASE_STUDY.md#flow-b-request-support-from-a-gameplay-context) · [世界交互到 UI](CODE_TOUR.md#4-a-world-interaction--support-ui) · [回调与可用状态 Bug](DEBUGGING.md)
+
+**其他截图：[缩小组队状态条](../media/SCREENSHOTS.md#compact-team-status-notice)。**顶部条显示活动和“组队中”，并提供恢复入口，与右侧队员列表不同。[恢复与退出逻辑](CODE_TOUR.md#3-compact-status--restore-or-explicit-exit)。
 
 ## 我的工作
 
 我开发、维护了组队与支援 gameplay 及其配套 UI，包括主面板接入、缩小状态通知、右侧队员 HUD 和后续问题修复。工作连接 Lua／UMG 呈现、C++ 系统与多人服务。
 
-重点是跨界面的连续体验、带上下文的邀请、异步正确性，以及实时数据的刷新成本。
+- **队伍数据接入：**校准竞技场与副本的匹配数据为共同 UI 状态，同时保留各模式请求与普通／匹配队伍数据来源。
+- **面板与缩小 HUD：**连接成员、角色、准备／匹配呈现及收起恢复；区分展示操作与离队、取消匹配等命令。
+- **邀请与支援：**把玩家发现接到活动上下文、详情与离线／忙碌／等待反馈，确保请求保持支援语义。
+- **战斗队员 HUD：**实现成员列表，并维护成员结构、战斗数值与玩家资料的不同更新路径。
+- **逻辑层性能：**追踪原生通知到列表重填、绑定及详情请求的开销链，控制结构刷新并独立支援上下文更新，随后调整详情时效性。
+- **Debug 与持续维护：**修复支援搜索回调环、可用状态刷新，并处理即时缓存提示与服务器资格判断之间的取舍。
 
 ## 三个问题与决策
 

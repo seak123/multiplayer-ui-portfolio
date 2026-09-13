@@ -1,20 +1,59 @@
 # Multiplayer UI: from finding teammates to playing together
 
-![Team setup with member slots and a player-invitation browser.](media/screenshots/Team_MainUI.png)
-
-Team setup, invitations, matching and support connect across menus and gameplay, with several views kept aligned to live multiplayer state.
+A connected multiplayer experience: form a team, invite support, minimise the controls and keep track of teammates during gameplay.
 
 **Evan (Yaxin) Ge · Lua / C++ / UMG · ProjectZ**
 
-[中文 README](docs/README.zh-CN.md) · [Screenshots](#gameplay-footage-and-screenshots) · [Explore the work](#deeper-reading)
+[中文 README](docs/README.zh-CN.md) · [Feature screenshots](#gameplay-footage-and-screenshots) · [My work](#my-work) · [Decisions](#three-questions-and-decisions) · [Code and tests](#deeper-reading)
 
-*Team setup: member slots, leader status and invitation sources share one panel. **Minimise** returns to gameplay without leaving the team. The displayed action is **Waiting to start**. [Footage credit and English label guide](media/SCREENSHOTS.md).*
+## Gameplay footage and screenshots
+
+Three views show the menu, combat HUD and support-discovery parts of the feature. [All four screenshots, English labels and footage credits](media/SCREENSHOTS.md).
+
+### Team setup and invitations
+
+![Team setup with three occupied member slots, an empty slot and an invitation browser on the right.](media/screenshots/Team_MainUI.png)
+
+**What the player does:** inspect the team and activity, find players through **Recommended / Friends / Recent / World**, and invite them. The crown marks the leader; the displayed action is **Waiting to start**. The feature allows the panel to be minimised while the team remains active.
+
+**Work behind this view:** common team presentation across arena/PvE data, role-dependent controls, invitation details, and shared state between the full panel and compact notice.
+
+[Feature: team panel to HUD and back](docs/CASE_STUDY.md#flow-a-create-a-team-minimise-restore) · [Decision: one UI-facing model](docs/DECISIONS.md#1-one-ui-facing-model-over-different-matching-systems) · [Code: panel actions](docs/CODE_TOUR.md#2-full-panel--player-intent)
+
+<a id="2-in-game-party-hud"></a>
+
+### In-game party HUD: readable team information during combat
+
+![Combat with a compact member roster on the right showing levels, names, health bars and distance.](media/screenshots/HUD_TeamPanel.png)
+
+**What the player sees:** the **member list on the right** keeps levels, names, health and distance visible without reopening team controls. [Open full-size image to inspect the roster](media/screenshots/HUD_TeamPanel.png).
+
+**Work behind this view:** I implemented this party HUD and maintained its data updates. Membership changes, live combat information and richer player profiles use different refresh responsibilities, avoiding unnecessary full-list work while retaining explicit detail-refresh opportunities.
+
+[Performance case: follow the refresh-cost chain](docs/HUD_PERFORMANCE.md) · [Code-reading route](docs/CODE_TOUR.md#7-hud-performance-read-the-cost-chain-then-run-the-model)
+
+### Support discovery and availability
+
+![Multiplayer browser with Invite for support actions, a Busy row, favourites, filters and search.](media/screenshots/SupportUI.png)
+
+**What the player does:** find another player to help with an activity using favourites, filters, refresh and search. Available rows offer **Invite for support**; a currently unavailable row reads **Busy**.
+
+**Work behind this view:** carry the activity's support ID into an existing browser, bind player details and availability, and route invitation requests and pending/cooldown state through the native manager.
+
+[Feature: contextual support](docs/CASE_STUDY.md#flow-b-request-support-from-a-gameplay-context) · [Code: world interaction to support UI](docs/CODE_TOUR.md#4-a-world-interaction--support-ui) · [Debugging: callback and availability fixes](docs/DEBUGGING.md)
+
+**Additional view — [compact team-status notice: screenshot and explanation](media/SCREENSHOTS.md#compact-team-status-notice).** The top-centre banner shows the activity and **Forming a team** state, and provides a route back to controls. It is separate from the right-side party roster. [Restore and exit logic](docs/CODE_TOUR.md#3-compact-status--restore-or-explicit-exit).
 
 ## My work
 
-I developed and maintained team and support gameplay with its associated UI, including the main-panel integration, compact team-status notice, right-side party HUD and follow-up fixes. The work connects Lua/UMG presentation to C++ systems and multiplayer services.
+I developed and maintained team and support gameplay with its associated UI, including the main-panel integration, compact team-status notice, right-side party HUD and follow-up fixes. The work connected Lua/UMG views to C++ systems and multiplayer services.
 
-My focus was continuity across views, contextual invitations, asynchronous correctness and the cost of refreshing live data.
+- **Team-state integration:** adapted arena and PvE matching data into common UI-facing state, while retaining mode-specific requests and ordinary/matched-team records.
+- **Panel and compact HUD:** connected member and role information, readiness/matching presentation, and minimise/restore behaviour; separated hiding controls from commands such as leaving or cancelling.
+- **Invitations and support:** integrated player discovery with activity context, player details and offline/busy/pending feedback, preserving the intended support action through to native dispatch.
+- **Party HUD:** implemented the in-game member roster and maintained the different update paths for roster membership, combat values and player details.
+- **Logic-layer performance:** followed repeated native notifications through Lua list population, binding and detail requests; gated structural refreshes and separated support-context updates, then revised detail freshness as the feature evolved.
+- **Debugging and ongoing maintenance:** removed a support-search request/callback cycle, corrected availability refreshes, and worked through the trade-off between immediate cached feedback and server-authoritative eligibility.
 
 ## Three questions and decisions
 
@@ -51,38 +90,5 @@ Profile data needed a different policy: cache-permitted binding reduced repeated
 - **Additional trade-off:** [Cached eligibility, immediate feedback and server authority](docs/DECISIONS.md#2-immediate-feedback-is-not-authoritative-eligibility).
 - **Verification:** [Focused tests — added for this portfolio](docs/TESTING.md) · [Independent HUD demonstration model — not production code](examples/hud-refresh/HudRefreshModel.lua).
 - **Evidence scope:** [Historical work, version boundaries, tests and footage](docs/EVIDENCE.md).
-
-## Gameplay footage and screenshots
-
-<details>
-<summary>Open the four-view gallery with English captions</summary>
-
-### 1. Team setup and invitations
-
-![Team setup with three occupied slots, one empty slot and an invitation browser.](media/screenshots/Team_MainUI.png)
-
-The crown identifies the leader. **Recommended / Friends / Recent / World** select invitation sources; the action reads **Waiting to start**.
-
-### 2. In-game party HUD
-
-![Combat with the party roster on the right, showing levels, names, health and distance.](media/screenshots/HUD_TeamPanel.png)
-
-**Focus on the member list on the right.** Levels, names, health and distance remain visible during combat without opening the team panel. [The refresh work behind this HUD](docs/HUD_PERFORMANCE.md).
-
-### 3. Finding players for support
-
-![Player browser with support invitations, a busy player, favourites, filters and search.](media/screenshots/SupportUI.png)
-
-Available rows offer **Invite for support**; an unavailable player is labelled **Busy**. Favourites, filters, refresh and search support discovery.
-
-### 4. Compact team-status notice
-
-![Gameplay with a blue activity and team-status banner at the top centre.](media/screenshots/TeamHUD.png)
-
-**Focus on the blue banner at the top centre.** It displays the activity and **Forming a team** status. This is distinct from the party roster and provides a route back to team controls.
-
-[Footage credits and label translations](media/SCREENSHOTS.md). These are separately labelled stills.
-
-</details>
 
 **Related cases:** [Building UI](https://github.com/seak123/building-ui-portfolio) · [Mechanical workers and world-space UI](https://github.com/seak123/mechanical-workers-ui-portfolio).
