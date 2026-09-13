@@ -44,9 +44,10 @@ Key labels: 多人游戏 / 玩家列表 — Multiplayer / Player list; 推荐玩
 
 ## Footage credits
 
+- **Source recording supplied by Evan Ge:** [Public gameplay livestream recording on Bilibili](https://www.bilibili.com/video/BV1NDLUzqELh/). This is the source link supplied for the screenshot set; the visible credits for individual images are retained below.
 - `Team_MainUI.png`, `HUD_TeamPanel.png` and `TeamHUD.png`: Bilibili footage bearing the **小鬼将军** creator watermark.
 - `SupportUI.png`: Bilibili footage bearing the **11的游戏世界** creator watermark.
-- Attribution is based on the watermarks visible in the supplied screenshots. Original video URLs and playback timestamps have not yet been recorded; game build/version is unverified.
+- Exact playback timestamps and the per-image match to the recording have not been independently verified; game build/version is unverified. The linked recording is not attributed to every visible creator solely on the basis of this source note.
 - Game visuals and UI artwork belong to their respective rights holders. Footage credit is separate from engineering-contribution statements; no ownership of the recordings or surrounding artwork is claimed.
 
 The images provide visual context, not performance measurements or a complete interaction recording. Diagrams elsewhere in the repository explain engineering relationships and are not game screenshots.
