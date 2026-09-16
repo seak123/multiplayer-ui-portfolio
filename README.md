@@ -48,7 +48,7 @@ Three views show the menu, combat HUD and support-discovery parts of the feature
 
 I developed and maintained team and support gameplay with its associated UI, including the main-panel integration, compact team-status notice, right-side party HUD and follow-up fixes. The work connected Lua/UMG views to C++ systems and multiplayer services.
 
-- **Team-state integration:** adapted arena and PvE matching data into common UI-facing state, while retaining mode-specific requests and ordinary/matched-team records.
+- **Team-state integration and evolution:** adapted arena and PvE matching data into common UI-facing state, then separated mode-specific matching into adapters as the multiplayer roadmap expanded. Shared party data and the panel/HUD flow stayed common; mode selection chose the matching strategy.
 - **Panel and compact HUD:** connected member and role information, readiness/matching presentation, and minimise/restore behaviour; separated hiding controls from commands such as leaving or cancelling.
 - **Invitations and support:** integrated player discovery with activity context, player details and offline/busy/pending feedback, preserving the intended support action through to native dispatch.
 - **Party HUD:** implemented the in-game member roster and maintained the different update paths for roster membership, combat values and player details.
@@ -59,9 +59,11 @@ I developed and maintained team and support gameplay with its associated UI, inc
 
 ### 1. How can different matching systems present one coherent team state?
 
-Arena and PvE matching used different protocols, stages and team records. I introduced a common UI-facing model boundary to translate those inputs into shared team state, while matching and cancellation retained mode-specific service dispatch.
+Arena and PvE matching used different protocols, stages and team records. I first centralised state translation and service dispatch in a common UI-facing model. With few modes, explicit branches were manageable.
 
-The full panel and compact HUD derive their presentation from that shared state. Hiding or restoring a view is separate from leaving a team or cancelling a match. [Decision rationale](docs/DECISIONS.md#1-one-ui-facing-model-over-different-matching-systems) · [Panel and HUD flow](docs/CASE_STUDY.md#flow-a-create-a-team-minimise-restore).
+Later plans for multiplayer horse racing, gliding, shooting contests and fishing competitions changed that trade-off. I split matching into mode-specific adapters, selected as strategies: incoming data became shared presentation state, outgoing actions used the correct service, and specialised matching details remained available to the view. The common party model and panel/HUD experience did not need a separate protocol implementation for each mode.
+
+[Two-stage design decision](docs/DECISIONS.md#1-one-ui-facing-model-over-different-matching-systems) · [Reconstructed later-design example and tests](examples/matchmaking-adapters/README.md) · [Panel and HUD flow](docs/CASE_STUDY.md#flow-a-create-a-team-minimise-restore).
 
 ### 2. How can support reuse player discovery without losing its purpose?
 
@@ -78,6 +80,7 @@ Profile data needed a different policy: cache-permitted binding reduced repeated
 ## Outcomes
 
 - Arena and PvE flows use a common presentation vocabulary while retaining their existing service paths.
+- The later adapter boundary concentrates mode-specific mapping and commands in a defined extension point, rather than continually expanding the shared model's matching branches.
 - Players can minimise team controls, keep playing with status feedback, and return to the current team state.
 - Stable membership avoids repeated structural refresh propagation; support-context changes have a narrower update path, and player details retain explicit refresh opportunities.
 - A support-search callback cycle was removed so completing a detail request no longer starts the same request again. [Debugging case](docs/DEBUGGING.md).
@@ -86,6 +89,7 @@ Profile data needed a different policy: cache-permitted binding reduced repeated
 
 - **Feature and architecture:** [Case study](docs/CASE_STUDY.md) · [Architecture](docs/ARCHITECTURE.md) · [Decision rationale](docs/DECISIONS.md).
 - **Implementation:** [Guided code tour](docs/CODE_TOUR.md) · [TeamModel](Content/Lua/GameLogics/Team/TeamModel.lua).
+- **Architecture evolution:** [Later Adapter/Strategy framework — reconstructed example](examples/matchmaking-adapters/README.md), including shared model, concrete adapters, mode registration and executable tests.
 - **Reliability and cost:** [Callback and availability fixes](docs/DEBUGGING.md) · [HUD performance](docs/HUD_PERFORMANCE.md).
 - **Additional trade-off:** [Cached eligibility, immediate feedback and server authority](docs/DECISIONS.md#2-immediate-feedback-is-not-authoritative-eligibility).
 - **Verification:** [Focused tests — added for this portfolio](docs/TESTING.md) · [Independent HUD demonstration model — not production code](examples/hud-refresh/HudRefreshModel.lua).

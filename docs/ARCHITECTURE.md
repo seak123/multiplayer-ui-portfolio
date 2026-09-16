@@ -17,7 +17,20 @@ flowchart TB
     F[Shared UI runtime: bindings, frames, lists, assets] -. supports .-> V
 ```
 
-This is the actual practical separation, including direct view-to-native calls. It is not a cleaned-up diagram that pretends every operation passes through a view-model.
+This diagram describes the retained, earlier implementation, including direct view-to-native calls. The subsequent adapter refactor is explained below, without rewriting this earlier excerpt to resemble the later version.
+
+## Later matchmaking adapter boundary
+
+I initially kept arena/PvE translation and dispatch together in TeamModel. Later plans for more multiplayer activity types justified separating those differences into adapters selected as strategies. Party information remained a shared responsibility; the selected adapter handled the mode's matching workflow.
+
+The [executable reconstruction](../examples/matchmaking-adapters/README.md) makes the call relationships explicit:
+
+- Feature setup registers mode factories and service ports. The registry resolves the selected implementation.
+- The shared model receives party snapshots independently of matching snapshots. It asks the adapter to build common matching state and mode-specific detail data.
+- Panel and HUD presenters consume the same view snapshot. A detail descriptor identifies specialised matching content; actual widgets remain a view-layer responsibility.
+- Start/cancel actions return through the selected adapter to the appropriate service. A dispatched command is not treated as a successful state transition.
+
+The adapter is a translator; using it through a common interface is the Strategy role. There is no need for an additional parallel strategy hierarchy. Concrete names and defensive checks in this example are documented at its entry point, with the version boundary in [EVIDENCE.md](EVIDENCE.md).
 
 ### Native data and services
 

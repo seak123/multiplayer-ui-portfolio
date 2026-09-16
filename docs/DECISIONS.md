@@ -8,17 +8,17 @@ These decisions come from my work on the feature. Implementation notes identify 
 
 ### Context and problem
 
-The original team experience centred on arena-style matchmaking, including team-versus-team activities. It consumed the arena system's protocol-specific data, such as the current queue and matching stage. PvE dungeons subsequently introduced another protocol, different stage definitions and a different path for matched-team information.
+The original team experience centred on arena-style matchmaking, including team-versus-team activities. It consumed the arena system's protocol-specific data, such as the current queue and matching stage. PvE dungeons subsequently introduced another protocol, different stage definitions and a different path for matched-team information. The existing backend architecture could not accommodate both through one common protocol, but we agreed that the player-facing team and matchmaking experience should remain consistent.
 
 I expected more activity types, not just one additional special case. If each screen interpreted each protocol independently, the panel, compact HUD and confirmation flow could disagree about the same team. Changes to a service would also spread through presentation code.
 
-### My decision
+### First stage: centralise adaptation
 
 I introduced a common model boundary to translate the different inputs into UI-facing team state and stages. The purpose was to normalise the meaning of the data, not to force the servers to share one protocol or pretend that every activity had the same lifecycle.
 
 Matching and cancellation still needed mode-aware dispatch. A shared view of the current state did not imply a universal backend command. This let the interface remain consistent while the existing arena and dungeon services continued to operate through their own paths.
 
-### What the implementation shows
+### What the earlier implementation shows
 
 The role is visible in [TeamModel](../Content/Lua/GameLogics/Team/TeamModel.lua):
 
@@ -28,11 +28,27 @@ The role is visible in [TeamModel](../Content/Lua/GameLogics/Team/TeamModel.lua)
 - `TeamMatchReq` and `CancelMatchReq` dispatch to the PvP or team service as appropriate.
 - `UpdateTeamFrameViewState` derives the shared HUD state. [TeamTypes](../Content/Lua/GameLogics/Team/TeamTypes.lua) holds common presentation mappings and invitation-source conventions.
 
-This is a pragmatic facade with explicit branches. The views still query some native information directly, and the model still knows about activity types. I would not describe it as complete protocol isolation or a pluggable adapter architecture.
+This earlier version is a pragmatic facade with explicit branches. The views still query some native information directly, and the model still knows about activity types. It records the first stage of the design, before the later adapter split.
+
+### Later stage: separate adapters and select a strategy
+
+Later in the project, planned multiplayer activities expanded to horse racing, gliding, shooting contests and fishing competitions. With that variety, repeatedly adding mode-specific branches to the shared model would concentrate too many unrelated changes in the same place. This was the trigger for my further refactor.
+
+I separated party information from the matchmaking workflow. Party membership and leadership continued to use the shared model and presentation. Each mode's matchmaking adapter handled two directions: interpreting its service data as UI-facing state, and translating player actions into the appropriate outgoing commands. Mode-specific stages and specialised matching details remained available rather than being forced into identical layouts.
+
+The UI module selected the corresponding adapter as its matchmaking strategy. The adapter boundary made the extension work explicit for the engineer integrating that mode: define its data meanings, request routing and view-specific details. The shared view continued to consume the common contract. Adapter and Strategy describe different roles here; they do not require two separate class hierarchies.
 
 ### Contribution and trade-off
 
-The feature could support arena and dungeon team flows through a common presentation vocabulary, providing one place to investigate conflicting stage information. The cost was maintaining translation and dispatch logic in the model as activity types grew. This was an incremental integration within existing systems, not a large-scale rewrite.
+The early integration made arena and dungeon flows usable through one team interface. The later split moved the changing matching rules out of the shared model's growing branches and into mode-specific implementations. The benefit was a clearer place to extend and investigate a mode while preserving common team behaviour.
+
+I did not start with the full abstraction because a few central branches were inexpensive to understand and maintain. The later roadmap justified the extra interfaces, registrations and contract checks. A new player action or genuinely different layout could still require a shared-contract or view change; adapters are not a promise that every future mode fits unchanged.
+
+The listed competitions explain the planning pressure. This account does not claim that every planned activity shipped or used an identical protocol.
+
+### Follow the concrete framework
+
+The [reconstructed example](../examples/matchmaking-adapters/README.md) contains a shared presentation model, a registry, arena and dungeon adapters, a common state contract and panel/HUD presenters. A synthetic third-mode test shows where extension happens. The retained `Content/` code remains the earlier implementation; the new `examples/` code illustrates the later structure from my development account. Exact original later class names and protocol values are not asserted. [Evidence scope](EVIDENCE.md).
 
 The explanation does not assume why the original server architecture was chosen. Its possible ancestry in an older MMORPG design is not needed to justify this decision.
 

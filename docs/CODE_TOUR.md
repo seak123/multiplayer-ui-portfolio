@@ -4,7 +4,7 @@
 
 The paths preserve the split between native source and Lua content. Follow a complete flow first, then inspect individual methods. `-- Implementation omitted.` marks an out-of-scope body, not working game behaviour. The test harness rejects calls into these placeholders.
 
-For the historical reason this shared boundary became necessary, read [the arena/PvE adaptation decision](DECISIONS.md#1-one-ui-facing-model-over-different-matching-systems). Later interaction-time freshness policy is documented there with a separate version boundary.
+For the two-stage evolution from central arena/PvE branches to mode-specific adapters, read [the adaptation decision](DECISIONS.md#1-one-ui-facing-model-over-different-matching-systems). Sections 1–6 below follow the earlier retained code. The later framework has a separate reconstructed reading route at the end; it is not silently inserted into the earlier excerpt.
 
 ## 1. Shared state → two presentations
 
@@ -76,4 +76,17 @@ The independently written [HudRefreshModel.lua](../examples/hud-refresh/HudRefre
 
 ## 8. Implementation map and validation
 
-[source-manifest.json](source-manifest.json) maps the existing code excerpts to included methods and omitted bodies. Its checksums validate those displayed files only; no project revision identifiers are published. The independently written `examples/` model is not a source excerpt and is not part of that map. [TESTING.md](TESTING.md) explains which methods execute in the focused harness and what still needs the actual game/editor.
+[source-manifest.json](source-manifest.json) maps the existing code excerpts to included methods and omitted bodies. Its checksums validate those displayed files only; no project revision identifiers are published. The independently written `examples/` models are not source excerpts and are not part of that map. [TESTING.md](TESTING.md) explains which methods execute in the focused harness and what still needs the actual game/editor.
+
+## 9. Later adapter framework
+
+Start at the [reconstruction entry point](../examples/matchmaking-adapters/README.md), then follow:
+
+1. [Composition](../examples/matchmaking-adapters/Composition.lua) registers concrete factories and native-service stand-ins.
+2. [AdapterRegistry](../examples/matchmaking-adapters/AdapterRegistry.lua) resolves a mode to a validated matching strategy.
+3. [TeamPresentationModel](../examples/matchmaking-adapters/TeamPresentationModel.lua) maintains party state independently, delegates matching translation/commands and publishes a shared view snapshot.
+4. [ArenaAdapter](../examples/matchmaking-adapters/adapters/ArenaAdapter.lua) and [DungeonAdapter](../examples/matchmaking-adapters/adapters/DungeonAdapter.lua) implement the same contract with different incoming fields and outgoing service operations.
+5. [SharedTeamPresenter](../examples/matchmaking-adapters/SharedTeamPresenter.lua) consumes common state for panel/HUD and exposes mode-specific detail data for the view layer.
+6. [Adapter tests](../tests/test_matchmaking_adapters.py) exercise both routes and register a synthetic third mode without changing the shared model.
+
+These are concrete interfaces for discussing the later refactor, not recovered later production source. The named competitions remain roadmap context, not fabricated protocol implementations.

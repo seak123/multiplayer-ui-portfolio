@@ -1,6 +1,6 @@
 # Verification and remaining validation
 
-Reverified on 13 September 2026: **28 tests run — 27 passed, 1 expected failure** documenting the cache-miss assumption below. The suite includes the 64-case team presentation matrix and 11 new HUD work/freshness model tests. No unexpected failures remained. This is a local test result, not CI, in-engine or device validation.
+Reverified on 16 September 2026: **44 tests run — 43 passed, 1 expected failure** documenting the cache-miss assumption below. The suite includes the 64-case team presentation matrix, 11 HUD work/freshness model tests and 16 matchmaking-adapter reconstruction tests. No unexpected failures remained. This is a local test result, not CI, in-engine or device validation.
 
 ## Run the focused tests
 
@@ -42,6 +42,14 @@ The [performance chapter](HUD_PERFORMANCE.md) explains the historical implementa
 Run just this portion with `python -m unittest discover -s tests -p test_hud_refresh.py -v`.
 
 The stable-roster fixture uses a fixed synthetic tick count. Its event and binding counts are deterministic checks, **not a benchmark, measured speedup or network saving**. Detail timing is represented by a separate test clock; real per-widget timer phase, callback scheduling, service request coalescing, network errors, multiple tracking-reason groups and recycled-row lifetime are not simulated. The tests do not prove that every production clear/full-sync path invalidates correctly.
+
+## Matchmaking adapter reconstruction
+
+The [later design example](../examples/matchmaking-adapters/README.md) has 16 checks in [test_matchmaking_adapters.py](../tests/test_matchmaking_adapters.py). They exercise different protocol snapshots producing a common state, retained mode-specific details, separate party/matched participants, arena target conversion and solo/party commands, dungeon service routing, cancellation, and shared panel/HUD presentation.
+
+They also check that request dispatch alone does not imply a state transition, unsupported modes and unknown stages do not silently become valid flows, snapshots do not alias the model, and a synthetic third mode can be registered without changing shared model code. The role guard and defensive checks belong to this new example. Same-mode stale sessions, real subscriptions, service timing and UMG widget creation are outside its coverage.
+
+Run only these checks with `python -m unittest discover -s tests -p test_matchmaking_adapters.py -v`. These are tests of the reconstruction, not a claim that the later production refactor used these exact classes or had this historical test coverage.
 
 ## Expected failure is intentional
 
