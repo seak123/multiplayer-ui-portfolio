@@ -27,7 +27,7 @@ end
 
 function Contract.ValidateAdapter(adapter)
     assert(type(adapter) == "table", "adapter must be a table")
-    for _, method in ipairs({ "BuildState", "Start", "Cancel" }) do
+    for _, method in ipairs({ "BuildState", "Start", "Cancel", "RegisterEvents", "UnregisterEvents", "ReadSnapshot" }) do
         assert(type(adapter[method]) == "function", "adapter missing " .. method)
     end
     return adapter

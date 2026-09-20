@@ -27,8 +27,9 @@ The [executable reconstruction](../examples/matchmaking-adapters/README.md) make
 
 - Feature setup registers mode factories and service ports. The registry resolves the selected implementation.
 - The shared model receives party snapshots independently of matching snapshots. It asks the adapter to build common matching state and mode-specific detail data.
-- Panel and HUD presenters consume the same view snapshot. A detail descriptor identifies specialised matching content; actual widgets remain a view-layer responsibility.
+- Team-window and Compact-team-notice presenters consume the same view snapshot; they do not represent the separate Party HUD roster. A detail descriptor identifies specialised matching content; actual widgets remain a view-layer responsibility.
 - Start/cancel actions return through the selected adapter to the appropriate service. A dispatched command is not treated as a successful state transition.
+- On a mode switch, the model unregisters old events, registers the new adapter and reads its current snapshot immediately. Subsequent events refresh that snapshot; feature disposal releases the listener. [Lifecycle example](../examples/matchmaking-adapters/TeamPresentationModel.lua).
 
 The adapter is a translator; using it through a common interface is the Strategy role. There is no need for an additional parallel strategy hierarchy. Concrete names and defensive checks in this example are documented at its entry point, with the version boundary in [EVIDENCE.md](EVIDENCE.md).
 
@@ -38,7 +39,7 @@ The adapter is a translator; using it through a common interface is the Strategy
 
 ### Feature models
 
-`TeamModel` owns UI-facing identity/target fields, stage, frame references and derived HUD state. It reads native state and coordinates presentation. The existing matching manager can also indicate active matching, so `IsMatching()` considers more than the model's local stage.
+`TeamModel` keeps UI-facing copies of identity/target fields, derived stage, frame references and Compact-team-notice state. Authoritative TeamData belongs to TeamComponent; each gameplay component/manager owns its matching records. The model reads those sources and manages presentation rather than becoming their owner. The existing matching manager can also indicate active matching, so `IsMatching()` considers more than the model's local stage.
 
 `MultiPlayerModel` owns the current `AssistId` and opens the appropriate panel context. It does not implement the support service or duplicate the list framework.
 
@@ -90,13 +91,13 @@ The notice consumes this through `UIUtil.SetImagePathAsync`. That is a specific 
 
 The full team panel, compact matching notice and in-game member roster are distinct UI surfaces. The timer examples immediately below describe the panel and notice; the roster's separate optimisation and freshness policy follow afterwards.
 
-The feature is primarily event-driven, not exclusively event-driven. The full panel requests player details periodically (five-second timer in the inspected code); the HUD formats matching elapsed time on a half-second timer. The HUD reads elapsed time from the native matching manager instead of accumulating a separate Lua counter.
+The feature is primarily event-driven, not exclusively event-driven. The retained Team window requests player details periodically (five-second timer in that version); the Compact team notice formats matching elapsed time on a half-second timer, reading the native manager rather than accumulating its own counter. These retained timings are not a specification of the later invitation policy.
 
 The support list also contains a later 300 ms search debounce, cancelling the pending scoped timer on new input. This is part of the shared browsing implementation. It can reduce intermediate queries during typing; it neither guarantees one request per user interaction nor prevents an older response arriving after a newer one.
 
 For a dedicated performance investigation I would measure refresh counts, request fan-out, Lua/native allocations, active subscriptions and game-thread UI work independently. No such measurements are fabricated for this repository.
 
-### In-game roster: separate update reasons
+### Party HUD: separate update reasons
 
 The [HUD performance case](HUD_PERFORMANCE.md) describes an implemented logic-layer optimisation and its later correctness trade-offs:
 
@@ -106,3 +107,9 @@ The [HUD performance case](HUD_PERFORMANCE.md) describes an implemented logic-la
 - **Richer details:** cache-permitted binding was later revised with a two-second forced refresh and forced queries on binding to address level-display problems. Request cadence does not guarantee maximum data age.
 
 The addition branch's dirty marking was narrowed to actual insertions, while removal remained conservative. This is a scoped optimisation, not proof that all mutation paths, hidden-widget timers or stale callbacks are fully handled. The [model](../examples/hud-refresh/HudRefreshModel.lua) isolates these responsibilities for tests; it is not a copy of the production C++/Lua architecture.
+
+### Later statistics extension
+
+The DS statistics Manager owns registration scope and accumulation from damage events. The component synchronises selected results; the Party HUD displays them. Mode switching does not reset accumulation, and client reconnection can recover a record still held on the DS. [Short framework overview](COMBAT_STATISTICS.md).
+
+The roster's historical detail timers and later invitation/statistics policies belong to different maintenance stages. Choose their freshness requirements from player use and cost; do not infer a universal timer hierarchy from the excerpted numbers. [Update-policy overview](HUD_PERFORMANCE.md).

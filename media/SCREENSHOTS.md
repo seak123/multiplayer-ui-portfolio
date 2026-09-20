@@ -22,7 +22,7 @@ Key labels: 推荐 — Recommended; 好友 — Friends; 最近 — Recent; 世�
 
 [HUD performance and data freshness](../docs/HUD_PERFORMANCE.md) · [Code-reading route](../docs/CODE_TOUR.md#7-hud-performance-read-the-cost-chain-then-run-the-model)
 
-[HUD_TeamPanel.png](screenshots/HUD_TeamPanel.png) shows the compact roster on the right: member levels, names, health bars and distances in metres. This case focuses on the party panel rather than the surrounding HUD and environment. The full image provides combat context; open it at full size to inspect the small roster.
+[HUD_TeamPanel.png](screenshots/HUD_TeamPanel.png) shows the compact roster on the right: member levels, names, health bars and distances in metres. This case focuses on the Party HUD rather than the surrounding HUD and environment. Later statistics modes are described separately; this image does not show them. The full image provides combat context; open it at full size to inspect the small roster.
 
 ## Support-player selection
 

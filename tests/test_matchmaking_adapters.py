@@ -27,9 +27,37 @@ class MatchmakingAdapters(unittest.TestCase):
                     table.insert(calls, {"team", id, enabled}); return true
                 end,
             }
+            lifecycle = {}
+            function addEventPort(service, name)
+                service.snapshots, service.listeners, service.nextToken = {}, {}, 0
+                function service:GetSnapshot(target) return self.snapshots[target] end
+                function service:Subscribe(target, callback)
+                    self.nextToken = self.nextToken + 1
+                    local token = self.nextToken
+                    self.listeners[token] = {target = target, callback = callback}
+                    table.insert(lifecycle, name .. ":subscribe")
+                    return function()
+                        self.listeners[token] = nil
+                        table.insert(lifecycle, name .. ":unsubscribe")
+                    end
+                end
+                function service:Emit(target, snapshot)
+                    self.snapshots[target] = snapshot
+                    for _, listener in pairs(self.listeners) do
+                        if listener.target == target then listener.callback() end
+                    end
+                end
+                function service:ListenerCount()
+                    local count = 0
+                    for _ in pairs(self.listeners) do count = count + 1 end
+                    return count
+                end
+            end
+            addEventPort(arena, "arena")
+            addEventPort(team, "team")
             model, registry = require("Composition")({arena = arena, team = team}, function(view)
                 table.insert(updates, view)
-                panel, hud = Presenter.Panel(view), Presenter.Hud(view)
+                panel, notice = Presenter.Panel(view), Presenter.Notice(view)
             end)
             party = {id = 7, leaderId = 11, localPlayerId = 11, members = {11, 22}}
             model:SetParty(party)
@@ -42,7 +70,7 @@ class MatchmakingAdapters(unittest.TestCase):
             local arenaLabel = panel.label
             model:SelectMode("dungeon", {targetId = 42})
             model:OnMatchSnapshot("dungeon", {teamPhase = "FINDING_MEMBERS"})
-            assert(panel.label == arenaLabel and hud.label == panel.label)
+            assert(panel.label == arenaLabel and notice.label == panel.label)
             assert(model:GetViewData().matchmaking.phase == "searching")
         ''')
 
@@ -62,7 +90,7 @@ class MatchmakingAdapters(unittest.TestCase):
         self.vm.execute('''
             model:SelectMode("dungeon", {targetId = 42})
             model:OnMatchSnapshot("dungeon", {teamPhase = "READY_CHECK", matchMembers = {11, 22, 33}})
-            assert(#panel.members == 2 and #panel.matchedMembers == 3 and hud.memberCount == 2)
+            assert(#panel.members == 2 and #panel.matchedMembers == 3 and notice.memberCount == 2)
             assert(model:GetViewData().matchmaking.phase == "awaiting_confirmation")
         ''')
 
@@ -173,6 +201,9 @@ class MatchmakingAdapters(unittest.TestCase):
                     end,
                     Start = function() table.insert(calls, {"synthetic_start"}); return true end,
                     Cancel = function() table.insert(calls, {"synthetic_cancel"}); return true end,
+                    RegisterEvents = function() end,
+                    UnregisterEvents = function() end,
+                    ReadSnapshot = function() return nil end,
                 }
             end)
             model:SelectMode("synthetic", {targetId = 321})
@@ -180,7 +211,7 @@ class MatchmakingAdapters(unittest.TestCase):
             assert(panel.detailsKey == "synthetic_detail" and panel.details.value == "test-only")
             assert(model:StartMatch() and calls[1][1] == "synthetic_start")
             model:OnMatchSnapshot("synthetic", {active = true})
-            assert(panel.label == hud.label and model:CancelMatch())
+            assert(panel.label == notice.label and model:CancelMatch())
         ''')
 
     def test_snapshot_and_view_copies_do_not_mutate_model_state(self):
@@ -202,6 +233,54 @@ class MatchmakingAdapters(unittest.TestCase):
             model:OnMatchSnapshot("arena", {queueStage = "NONE"})
             local ok, err = pcall(function() model:StartMatch() end)
             assert(not ok and string.find(err, "unmapped arena target") and #calls == 0)
+        ''')
+
+    def test_select_reads_data_that_existed_before_subscription(self):
+        self.vm.execute('''
+            team.snapshots[42] = {teamPhase = "READY_CHECK", matchMembers = {11,22,33}}
+            model:SelectMode("dungeon", {targetId = 42})
+            assert(team:ListenerCount() == 1)
+            assert(model:GetViewData().matchmaking.phase == "awaiting_confirmation")
+            assert(#panel.matchedMembers == 3)
+        ''')
+
+    def test_switch_unsubscribes_before_subscribing_and_follows_new_events(self):
+        self.vm.execute('''
+            model:SelectMode("arena", {targetId = 42})
+            model:SelectMode("dungeon", {targetId = 123})
+            assert(lifecycle[2] == "arena:unsubscribe" and lifecycle[3] == "team:subscribe")
+            assert(arena:ListenerCount() == 0 and team:ListenerCount() == 1)
+            local count = #updates
+            arena:Emit(42, {queueStage = "ENTERING"})
+            assert(#updates == count)
+            team:Emit(123, {teamPhase = "FINDING_MEMBERS"})
+            assert(panel.label == "Finding teammates")
+        ''')
+
+    def test_repeated_switches_and_disposal_release_listeners(self):
+        self.vm.execute('''
+            for i = 1, 5 do
+                model:SelectMode("arena", {targetId = 42})
+                model:SelectMode("dungeon", {targetId = 123})
+            end
+            assert(arena:ListenerCount() == 0 and team:ListenerCount() == 1)
+            model:Dispose()
+            assert(team:ListenerCount() == 0 and arena:ListenerCount() == 0)
+            local count = #updates
+            team:Emit(123, {teamPhase = "TRANSFERRING"})
+            assert(#updates == count)
+        ''')
+
+    def test_queued_old_listener_is_ignored_even_after_returning_to_same_mode(self):
+        self.vm.execute('''
+            model:SelectMode("arena", {targetId = 42})
+            local oldCallback
+            for _, item in pairs(arena.listeners) do oldCallback = item.callback end
+            model:SelectMode("dungeon", {targetId = 123})
+            model:SelectMode("arena", {targetId = 42})
+            local count = #updates
+            oldCallback()
+            assert(#updates == count)
         ''')
 
 

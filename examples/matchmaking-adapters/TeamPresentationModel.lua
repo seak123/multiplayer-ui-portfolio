@@ -17,8 +17,31 @@ function Model:SelectMode(mode, context)
     -- Resolve first: an unsupported mode must not partially replace active state.
     local adapter = self.registry:Create(mode)
     assert(type(context) == "table" and context.targetId ~= nil, "target required")
+    local nextContext = Contract.Copy(context)
+    if self.adapter then self.adapter:UnregisterEvents() end
     self.adapter, self.mode = adapter, mode
-    self.context = Contract.Copy(context)
+    self.context = nextContext
+    self.match = Contract.Unavailable()
+    adapter:RegisterEvents(self.context, function()
+        -- Illustrative identity guard, not a claim about historical callback handling.
+        if self.adapter == adapter then self:RefreshMatching() end
+    end)
+    -- Read existing state after subscribing; no need to wait for the next event.
+    self:RefreshMatching()
+end
+
+function Model:RefreshMatching()
+    if not self.adapter then return end
+    local snapshot = self.adapter:ReadSnapshot(self.context)
+    self.match = snapshot and self.adapter:BuildState(self.context, snapshot)
+        or Contract.Unavailable()
+    self:Publish()
+end
+
+function Model:Dispose()
+    local old = self.adapter
+    self.adapter, self.mode, self.context = nil, nil, nil
+    if old then old:UnregisterEvents() end
     self.match = Contract.Unavailable()
     self:Publish()
 end

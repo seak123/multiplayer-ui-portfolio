@@ -10,7 +10,7 @@ These decisions come from my work on the feature. Implementation notes identify 
 
 The original team experience centred on arena-style matchmaking, including team-versus-team activities. It consumed the arena system's protocol-specific data, such as the current queue and matching stage. PvE dungeons subsequently introduced another protocol, different stage definitions and a different path for matched-team information. The existing backend architecture could not accommodate both through one common protocol, but we agreed that the player-facing team and matchmaking experience should remain consistent.
 
-I expected more activity types, not just one additional special case. If each screen interpreted each protocol independently, the panel, compact HUD and confirmation flow could disagree about the same team. Changes to a service would also spread through presentation code.
+I expected more activity types, not just one additional special case. If each screen interpreted each protocol independently, the Team window, Compact team notice and confirmation flow could disagree about the same team. Changes to a service would also spread through presentation code.
 
 ### First stage: centralise adaptation
 
@@ -26,7 +26,7 @@ The role is visible in [TeamModel](../Content/Lua/GameLogics/Team/TeamModel.lua)
 - `IsMatching` combines the common team stage with the arena matching manager's current queue.
 - `TeamMatchingForInstance` and `TeamMatchingForPVP` adapt their entry conditions before opening the common team interface.
 - `TeamMatchReq` and `CancelMatchReq` dispatch to the PvP or team service as appropriate.
-- `UpdateTeamFrameViewState` derives the shared HUD state. [TeamTypes](../Content/Lua/GameLogics/Team/TeamTypes.lua) holds common presentation mappings and invitation-source conventions.
+- `UpdateTeamFrameViewState` derives the Compact team notice's `HUDState`. [TeamTypes](../Content/Lua/GameLogics/Team/TeamTypes.lua) holds common presentation mappings and invitation-source conventions.
 
 This earlier version is a pragmatic facade with explicit branches. The views still query some native information directly, and the model still knows about activity types. It records the first stage of the design, before the later adapter split.
 
@@ -48,7 +48,7 @@ The listed competitions explain the planning pressure. This account does not cla
 
 ### Follow the concrete framework
 
-The [reconstructed example](../examples/matchmaking-adapters/README.md) contains a shared presentation model, a registry, arena and dungeon adapters, a common state contract and panel/HUD presenters. A synthetic third-mode test shows where extension happens. The retained `Content/` code remains the earlier implementation; the new `examples/` code illustrates the later structure from my development account. Exact original later class names and protocol values are not asserted. [Evidence scope](EVIDENCE.md).
+The [reconstructed example](../examples/matchmaking-adapters/README.md) contains a shared presentation model, a registry, arena and dungeon adapters, a common state contract and presenters for the Team window and Compact team notice. A synthetic third-mode test shows where extension happens. The retained `Content/` code remains the earlier implementation; the new `examples/` code illustrates the later structure from my development account. Exact original later class names and protocol values are not asserted. [Evidence scope](EVIDENCE.md).
 
 The explanation does not assume why the original server architecture was chosen. Its possible ancestry in an older MMORPG design is not needed to justify this decision.
 
@@ -58,11 +58,11 @@ The explanation does not assume why the original server architecture was chosen.
 
 Player discovery and player details arrived through separate stages: obtain a set of player IDs, then batch-request richer records for those IDs. The UI could respond quickly using cached details, but those details could become stale while the screen remained open.
 
-For example, a player who had just reached the required level might still appear ineligible in another client's cache. In this workflow, that detail cache was not kept current by a dedicated push for every such change. Repeatedly polling the entire list just to catch a rare eligibility change carried a disproportionate cost.
+For example, a player who had just reached the required level might still appear ineligible in another client's cache. In this workflow, that detail cache was not kept current by a dedicated push for every such change. Periodic refreshes helped keep the list current, but increasing whole-list polling alone was an expensive way to handle a rare eligibility change.
 
 ### The policy I worked on
 
-In a later development iteration in 2025, the interaction policy I worked on was to treat this kind of cache-based eligibility warning as immediate feedback, not a veto on the RPC. The user action should still reach authoritative validation, while a targeted detail request refreshes the specific player being acted on.
+In a later development iteration in 2025, the interaction policy I worked on was to treat this kind of cache-based eligibility warning as immediate feedback, not a veto on the RPC. The user action should still reach authoritative validation, while a targeted detail request refreshes the specific player being acted on. Periodic refreshes, invitation-related actions and response updates worked together; no exact later timer interval is asserted.
 
 That preserves responsiveness and avoids a stale client permanently preventing an otherwise valid invitation. It does **not** mean bypassing server checks, invite cooldowns or other authoritative restrictions.
 
@@ -82,3 +82,15 @@ The **warning + non-blocking invitation + targeted refresh on that click** polic
 ### Distinguish this from HUD optimisation
 
 This decision concerns interaction-time freshness for a selected player. The [HUD performance case](HUD_PERFORMANCE.md) concerns roster notifications, list binding and periodic detail refresh. They share a data-lifetime problem, but they are different paths and should not be collapsed into one alleged fix.
+
+## 3. Current state must not wait for the next event
+
+Gameplay systems own TeamData and each mode's matching data; the UI model owns presentation. Switching targets changes the adapter and its event subscriptions, not ownership of those records.
+
+I unregistered the old listener, registered the new one and refreshed from the new module immediately. This lets data received before registration appear on first display. Later broadcasts keep it current. Hiding the Team window is not the same operation as switching adapters or leaving the queue.
+
+The [reconstructed lifecycle example](../examples/matchmaking-adapters/README.md#switching-and-first-display) shows that sequence. Its extra callback-identity guard is an illustrative implementation choice, not a claim that the historical system solved every asynchronous race.
+
+## 4. Freshness follows player use
+
+The same profile details can be relatively slow-changing display information on the Party HUD and action-sensitive information in the Team invitation tab. Health, membership, support availability and statistics have different requirements again. [Update policies](HUD_PERFORMANCE.md) explains those choices; [statistics](COMBAT_STATISTICS.md) shows why display selection stays separate from accumulation.

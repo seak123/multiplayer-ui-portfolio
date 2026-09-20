@@ -38,6 +38,8 @@ In [TeamMatchingNotice.lua](../Content/Lua/GameLogics/Team/TeamMatching/TeamMatc
 
 ## 4. A world interaction → support UI
 
+The Party HUD entry is `DungeonHUDTeamArea:OnReqAssist`, which emits `OnRequestOpenAssistPanel` with `TeamManager.RegionAssistID`. Its full implementation is not exported here. The NPC excerpt below demonstrates another entry into the same event and shared browser, not the only way players request help.
+
 [PzBossAssistCallFuncObject.cpp](../Source/ProjectZ/GameLogic/BossAltar/NpcFunc/PzBossAssistCallFuncObject.cpp) emits `OnRequestOpenAssistPanel` with the configured `AssistId`.
 
 In [MultiPlayerModel.lua](../Content/Lua/GameLogics/MultiPlayer/MultiPlayerModel.lua), `OnRequestOpenAssistPanel` calls `RequestAssist`, which reads support configuration and opens the multiplayer parent in support mode.
@@ -62,6 +64,8 @@ The adjacent headers keep selected signatures readable. They are explicitly labe
 
 ## 7. HUD performance: read the cost chain, then run the model
 
+Start with the player-facing policy: combat values, informational details, invitation details, roster/support changes and statistics need different update paths. The model below illustrates the early roster subset, not the complete later feature.
+
 [HUD_PERFORMANCE.md](HUD_PERFORMANCE.md) follows the tracked-player notification into roster data population, item binding and detail queries. The production method names there are navigation context; the full HUD implementation is not included in this export.
 
 The independently written [HudRefreshModel.lua](../examples/hud-refresh/HudRefreshModel.lua) gives a small executable counterpart:
@@ -84,9 +88,15 @@ Start at the [reconstruction entry point](../examples/matchmaking-adapters/READM
 
 1. [Composition](../examples/matchmaking-adapters/Composition.lua) registers concrete factories and native-service stand-ins.
 2. [AdapterRegistry](../examples/matchmaking-adapters/AdapterRegistry.lua) resolves a mode to a validated matching strategy.
-3. [TeamPresentationModel](../examples/matchmaking-adapters/TeamPresentationModel.lua) maintains party state independently, delegates matching translation/commands and publishes a shared view snapshot.
+3. [TeamPresentationModel](../examples/matchmaking-adapters/TeamPresentationModel.lua) maintains party state independently, delegates matching translation/commands and publishes a shared view snapshot. `SelectMode` removes old listeners, registers new ones and calls `RefreshMatching` immediately; `Dispose` unregisters.
 4. [ArenaAdapter](../examples/matchmaking-adapters/adapters/ArenaAdapter.lua) and [DungeonAdapter](../examples/matchmaking-adapters/adapters/DungeonAdapter.lua) implement the same contract with different incoming fields and outgoing service operations.
-5. [SharedTeamPresenter](../examples/matchmaking-adapters/SharedTeamPresenter.lua) consumes common state for panel/HUD and exposes mode-specific detail data for the view layer.
+5. [SharedTeamPresenter](../examples/matchmaking-adapters/SharedTeamPresenter.lua) consumes common state for the Team window and Compact team notice, not the separate Party HUD. `Panel` and `Notice` expose presentation and mode-specific detail data.
 6. [Adapter tests](../tests/test_matchmaking_adapters.py) exercise both routes and register a synthetic third mode without changing the shared model.
 
 These are concrete interfaces for discussing the later refactor, not recovered later production source. The named competitions remain roadmap context, not fabricated protocol implementations.
+
+## 10. Later data flow and cross-layer diagnosis
+
+[Combat statistics](COMBAT_STATISTICS.md) outlines DS registration and accumulation, component synchronisation and Party HUD consumption. [Multiplayer entry debugging](DEBUGGING.md#multiplayer-entry-correct-synchronisation-wrong-team-context) explains the target-to-floor dependency and the solo-player context error.
+
+These are short design/development accounts, not additional exported production implementations. The tests in this repository do not execute either the server statistics system or the dungeon-entry fix.

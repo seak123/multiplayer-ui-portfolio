@@ -13,6 +13,23 @@ function ArenaAdapter.new(service)
     return setmetatable({ service = assert(service, "arena service required") }, ArenaAdapter)
 end
 
+-- Ports represent existing mode-owned data and events, not new data ownership.
+function ArenaAdapter:RegisterEvents(context, changed)
+    self:UnregisterEvents()
+    self.unsubscribe = self.service:Subscribe(context.targetId, changed)
+    assert(type(self.unsubscribe) == "function", "unsubscribe function required")
+end
+
+function ArenaAdapter:UnregisterEvents()
+    local unsubscribe = self.unsubscribe
+    self.unsubscribe = nil
+    if unsubscribe then unsubscribe() end
+end
+
+function ArenaAdapter:ReadSnapshot(context)
+    return self.service:GetSnapshot(context.targetId)
+end
+
 function ArenaAdapter:BuildState(context, snapshot)
     return Contract.State(phases[snapshot.queueStage] or "unknown", snapshot.queueStage,
         "arena_queue", { queueLabel = snapshot.queueLabel, targetId = context.targetId },

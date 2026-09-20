@@ -1,6 +1,6 @@
 # Verification and remaining validation
 
-Reverified on 16 September 2026: **44 tests run — 43 passed, 1 expected failure** documenting the cache-miss assumption below. The suite includes the 64-case team presentation matrix, 11 HUD work/freshness model tests and 16 matchmaking-adapter reconstruction tests. No unexpected failures remained. This is a local test result, not CI, in-engine or device validation.
+Reverified on 20 September 2026: **48 tests run — 47 passed, 1 expected failure** documenting the cache-miss assumption below. The suite includes the 64-case team presentation matrix, 11 HUD work/freshness model tests and 20 matchmaking-adapter reconstruction tests. No unexpected failures remained. This is a local test result, not CI, in-engine or device validation.
 
 ## Run the focused tests
 
@@ -45,9 +45,9 @@ The stable-roster fixture uses a fixed synthetic tick count. Its event and bindi
 
 ## Matchmaking adapter reconstruction
 
-The [later design example](../examples/matchmaking-adapters/README.md) has 16 checks in [test_matchmaking_adapters.py](../tests/test_matchmaking_adapters.py). They exercise different protocol snapshots producing a common state, retained mode-specific details, separate party/matched participants, arena target conversion and solo/party commands, dungeon service routing, cancellation, and shared panel/HUD presentation.
+The [later design example](../examples/matchmaking-adapters/README.md) has 20 checks in [test_matchmaking_adapters.py](../tests/test_matchmaking_adapters.py). They exercise different protocol snapshots producing a common state, retained mode-specific details, separate party/matched participants, arena target conversion and solo/party commands, dungeon service routing, cancellation, and shared Team-window/Compact-team-notice presentation.
 
-They also check that request dispatch alone does not imply a state transition, unsupported modes and unknown stages do not silently become valid flows, snapshots do not alias the model, and a synthetic third mode can be registered without changing shared model code. The role guard and defensive checks belong to this new example. Same-mode stale sessions, real subscriptions, service timing and UMG widget creation are outside its coverage.
+They also check that request dispatch alone does not imply a state transition, unsupported modes and unknown stages do not silently become valid flows, snapshots do not alias the model, and a synthetic third mode can be registered without changing shared model code. The role guard and defensive checks belong to this new example. Four additional checks exercise existing data on first subscription, old/new listener ordering and event delivery, repeated switches/disposal, and a queued old listener after returning to the same mode. These use synchronous fake event ports; the callback-identity guard is a reconstruction choice. Same-mode stale service sessions, real framework event scheduling and UMG widget creation remain outside coverage.
 
 Run only these checks with `python -m unittest discover -s tests -p test_matchmaking_adapters.py -v`. These are tests of the reconstruction, not a claim that the later production refactor used these exact classes or had this historical test coverage.
 
@@ -73,3 +73,5 @@ No Unreal build, real UMG rendering, native C++ execution, network/backend inter
 8. **Roster invalidation and freshness:** unchanged members, duplicate additions, removals, bulk clear/full sync, level changes, cache misses and delayed replies. Verify support-only updates do not require rebuilding the roster, and that necessary detail refreshes do not compromise health/distance responsiveness. Distinguish API calls from actual dispatched requests.
 
 These are proposed regression checks, not a claim that every item was historically executed or that the feature already passes all of them.
+
+The later combat-statistics system and multiplayer dungeon-initialization fix are described for context only; no local test count above represents coverage of either production system.

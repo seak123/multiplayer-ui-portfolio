@@ -1,4 +1,5 @@
--- Plain-data stand-ins for panel/HUD binding. No UMG or asset loading is implied.
+-- Team-window and compact-notice stand-ins, NOT the separate party roster HUD.
+-- No UMG or asset loading is implied.
 local Contract = require("MatchContract")
 local Presenter = {}
 local labels = {
@@ -20,7 +21,7 @@ function Presenter.Panel(view)
     }
 end
 
-function Presenter.Hud(view)
+function Presenter.Notice(view)
     return { label = labels[view.matchmaking.phase], memberCount = #view.party.members }
 end
 

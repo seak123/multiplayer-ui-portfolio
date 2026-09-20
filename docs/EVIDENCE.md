@@ -29,3 +29,13 @@ The [HUD performance chapter](HUD_PERFORMANCE.md) distinguishes the implemented 
 The [footage guide](../media/SCREENSHOTS.md) records creator credits and English label translations. Screenshots preserve the original watermarks and illustrate separate states rather than a continuous click-through or measured optimisation results. Team formation in the compact banner is distinct from active matchmaking; the party roster is a separate view.
 
 Game visuals and project material remain subject to their respective rights.
+
+## Lifecycle, statistics and cross-layer diagnosis
+
+The later adapter account includes unregistering the previous mode, registering the selected mode and immediately reading its current state. The reconstruction now demonstrates this through synchronous in-memory event ports. Its identity guard and exact method names are illustrative; it does not establish full production race protection.
+
+Later combat statistics are described from my development account: the DS Manager calculates and retains totals, the component synchronises selected results, and the Party HUD displays them. The earlier excerpts, roster model and screenshots do not contain or demonstrate that complete later system.
+
+The multiplayer-entry investigation combines the checked floor-initialization/lookup changes with my recollection of QA state capture, critical-value logs and successful/failing comparisons. That account establishes the three-plus-one composition and incorrect solo-player team context, with correct protocol timing. The relevant fix is not exported or exercised by this portfolio harness; backend details and historical regression results are not added.
+
+These accounts extend the feature background without publishing raw project history, diagnostic logs or private interview-preparation material.
